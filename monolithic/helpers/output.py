@@ -1,7 +1,7 @@
 import git
 import pathlib
 
-from enums import Cases, TimeSteppingSchemes
+from .enums import Cases, TimeSteppingSchemes
 
 def add_metainfo(runner_file, csv_file, time_stepping_scheme):
     repo_base = runner_file.parent / ".."

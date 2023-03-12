@@ -6,8 +6,8 @@ from numpy.linalg import eig
 import pandas as pd
 import pathlib
 
-from enums import Cases, TimeSteppingSchemes
-from output import add_metainfo
+from helpers.enums import Cases, TimeSteppingSchemes
+from helpers.output import add_metainfo
 
 this_file = pathlib.Path(__file__)
 
