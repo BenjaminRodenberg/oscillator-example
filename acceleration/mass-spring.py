@@ -8,13 +8,15 @@ import pathlib
 
 from helpers.enums import Cases, TimeSteppingSchemes, ParticipantNames, DataNames, MeshNames
 from helpers.output import add_metainfo
-from helpers.interpolation import do_linear_interpolation, do_lagrange_interpolation
+from helpers.interpolation import do_lagrange_interpolation
 
 this_file = pathlib.Path(__file__)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("participantName", help="Name of the solver.", type=str)
+parser.add_argument("preciceConfig", nargs="?", help="precice-config.xml to be used.", type=pathlib.Path, default=this_file.parent / "precice-config-0.04-QN.xml")
 parser.add_argument("-ts", "--time-stepping", help="Time stepping scheme being used.", type=str, default=TimeSteppingSchemes.NEWMARK_BETA.value)
+
 
 try:
     args = parser.parse_args()
@@ -80,7 +82,7 @@ num_vertices = 1  # Number of vertices
 solver_process_index = 0
 solver_process_size = 1
 
-configuration_file_name = f"precice-config-{window_dt}.xml"
+configuration_file_name = str(args.preciceConfig)
 
 interface = precice.Interface(participant_name, configuration_file_name,
                             solver_process_index, solver_process_size)
@@ -170,13 +172,15 @@ while interface.is_coupling_ongoing():
         f_mid = interface.read_scalar_data(read_data_ids[0], vertex_id)
         t_mid = (t_start + t_end) * 0.5
         f_end = interface.read_scalar_data(read_data_ids[1], vertex_id)
-        f = do_lagrange_interpolation(t + t_f, [t_start, t_mid, t_end], [f_start, f_mid, f_end])
+        ts = [t_start, t_mid, t_end]
+        fs = [f_start, f_mid, f_end]
 
     elif participant_name == ParticipantNames.MASS_RIGHT.value:  # does two small time steps per window
         f_end = interface.read_scalar_data(read_data_ids[0], vertex_id)  # read data always corresponds to end of window
-        print(f"evaluation time for substep {substep} is {t + t_f}")
-        f = do_linear_interpolation(t + t_f, (t_start, f_start), (t_end, f_end))
-        print(f"f={f}")
+        ts = [t_start, t_end]
+        fs = [f_start, f_end]
+
+    f = do_lagrange_interpolation(t + t_f, ts, fs)
 
     # do generalized alpha step
     u_new = (f - alpha_f * stiffness * u + mass*(m[0]*u + m[1]*v + m[2]*a)) / k_bar

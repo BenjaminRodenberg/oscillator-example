@@ -10,7 +10,7 @@ The following examples are included here:
 2) `precice-2`: A partitioned solution of the oscillator using preCICE 2.3[^3].
 3) `waveform`: A partitioned solution of the oscillator using preCICE 2.3[^3]. Implementing waveform iteration ideas from[^1] in the adapter code.
 4) `multirate`: A partitioned solution of the oscillator using preCICE 2.3[^3]. Implementing waveform iteration ideas from[^1] in the adapter code. Additionally illustrating improvements for subcycling.
-5) `quasi-newton`: A partitioned solution of the oscillator using preCICE 2.3[^3]. Implementing waveform ideas from [^1] in the adapter code. Additionally illustrating how to implement Quasi-Newton waveform iteration following the approach from [^5]
+5) `acceleration`: A partitioned solution of the oscillator using preCICE 2.3[^3]. Implementing waveform ideas from [^1] in the adapter code. Additionally illustrating how to implement underrelaxation and quasi-Newton waveform iteration following the approach from [^5]
 6) `precice-3`: A partitioned solution of the oscillator using preCICE 3.x[^4]. The native API from preCICE 3.x is used to apply waveform iteration.
 
 ## Code Reproducibility
