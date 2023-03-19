@@ -6,9 +6,9 @@ from numpy.linalg import eig
 import precice
 import pathlib
 
-from helpers.enums import Cases, TimeSteppingSchemes, ParticipantNames, DataNames, MeshNames
-from helpers.output import add_metainfo
-from helpers.interpolation import do_lagrange_interpolation
+from brot.enums import Cases, TimeSteppingSchemes, ParticipantNames, DataNames, MeshNames
+from brot.output import add_metainfo
+from brot.interpolation import do_lagrange_interpolation
 
 this_file = pathlib.Path(__file__)
 
