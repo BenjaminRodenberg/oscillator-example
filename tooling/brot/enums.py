@@ -21,6 +21,7 @@ class ParticipantNames(Enum):
 
 class DataNames(Enum):
     FORCE_LEFT = "Force-Left"
+    FORCE_RIGHT = "Force-Right"
     FORCE_RIGHT_1 = "Force-Right-1"
     FORCE_RIGHT_2 = "Force-Right-2"
 

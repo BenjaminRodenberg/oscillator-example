@@ -9,6 +9,8 @@ import pathlib
 from brot.enums import Cases, TimeSteppingSchemes, ParticipantNames, DataNames, MeshNames
 from brot.output import add_metainfo
 from brot.interpolation import do_lagrange_interpolation
+from brot.timesteppers import GeneralizedAlpha
+import brot.oscillator as oscillator
 
 this_file = pathlib.Path(__file__)
 
@@ -27,25 +29,6 @@ except SystemExit:
 
 participant_name = args.participantName
 
-m_1, m_2 = 1, 1
-k_1, k_2, k_12 = 4*np.pi**2, 4*np.pi**2, 16*(np.pi**2)
-
-# system:
-# m ddu + k u = f
-
-M = np.array([[m_1, 0], [0, m_2]])
-M_inv = np.array([[1 / m_1, 0], [0, 1 / m_2]])
-K = np.array([[k_1 + k_12, -k_12], [-k_12, k_2 + k_12]])
-
-eigenvalues, eigenvectors = eig(K)  # should be K/M?
-omega = np.sqrt(eigenvalues)
-A, B = eigenvectors
-
-u0_1 = 1
-u0_2 = 0
-v0_1 = 0
-v0_2 = 0
-
 window_dt = 0.04
 
 if participant_name == ParticipantNames.MASS_LEFT.value:  # left mass uses large time step size == window size
@@ -55,11 +38,11 @@ if participant_name == ParticipantNames.MASS_LEFT.value:  # left mass uses large
     read_data_names = [DataNames.FORCE_RIGHT_1.value, DataNames.FORCE_RIGHT_2.value]  # receives results from two time steps of right mass
     mesh_name = MeshNames.MASS_LEFT_MESH.value
 
-    mass = m_1
-    stiffness = k_1 + k_12
-    u0, v0, f0, d_dt_f0 = u0_1, v0_1, k_12 * u0_2, k_12 * v0_2
-    u_analytical = lambda t: .5 * (np.cos(2 * np.pi * t) + np.cos(6 * np.pi * t))
-    v_analytical = lambda t: .5 * (-2 * np.pi * np.sin(2 * np.pi * t) - 6 * np.pi * np.sin(6 * np.pi * t))
+    mass = oscillator.MassLeft.m
+    stiffness = oscillator.SpringLeft.k + oscillator.SpringMiddle.k
+    u0, v0, f0, d_dt_f0 = oscillator.MassLeft.u0, oscillator.MassLeft.v0, oscillator.SpringMiddle.k * oscillator.MassRight.u0, oscillator.SpringMiddle.k * oscillator.MassRight.v0
+    u_analytical = oscillator.MassLeft.u_analytical
+    v_analytical = oscillator.MassLeft.v_analytical
 
 elif participant_name == ParticipantNames.MASS_RIGHT.value:  # right mass uses small time step size == 0.5 * window size
     my_dt = window_dt * 0.5
@@ -68,11 +51,11 @@ elif participant_name == ParticipantNames.MASS_RIGHT.value:  # right mass uses s
     write_data_names = [DataNames.FORCE_RIGHT_1.value, DataNames.FORCE_RIGHT_2.value]  # sends results for each of the two substeps
     mesh_name = MeshNames.MASS_RIGHT_MESH.value
 
-    mass = m_2
-    stiffness = k_2 + k_12
-    u0, v0, f0, d_dt_f0 = u0_2, v0_2, k_12 * u0_1, k_12 * v0_1
-    u_analytical = lambda t: .5 * (np.cos(2 * np.pi * t) - np.cos(6 * np.pi * t))
-    v_analytical = lambda t: .5 * (-2 * np.pi * np.sin(2 * np.pi * t) + 6 * np.pi * np.sin(6 * np.pi * t))
+    mass = oscillator.MassRight.m
+    stiffness = oscillator.SpringLeft.k + oscillator.SpringMiddle.k
+    u0, v0, f0, d_dt_f0 = oscillator.MassRight.u0, oscillator.MassRight.v0, oscillator.SpringMiddle.k * oscillator.MassLeft.u0, oscillator.SpringMiddle.k * oscillator.MassLeft.v0
+    u_analytical = oscillator.MassRight.u_analytical
+    v_analytical = oscillator.MassRight.v_analytical
 
 else:
     raise Exception(f"wrong participant name: {participant_name}. Please use one of {[p.value for p in ParticipantNames]}.")
@@ -92,7 +75,7 @@ dimensions = interface.get_dimensions()
 
 vertex = np.zeros(dimensions)
 read_data = np.zeros(num_vertices)
-write_data = k_12 * u0 * np.ones(num_vertices)
+write_data = oscillator.SpringMiddle.k * u0 * np.ones(num_vertices)
 
 vertex_id = interface.set_mesh_vertex(mesh_id, vertex)
 read_data_ids = [interface.get_data_id(read_data_name, mesh_id) for read_data_name in read_data_names]
@@ -119,24 +102,13 @@ t = 0
 
 # Generalized Alpha Parameters
 if args.time_stepping == TimeSteppingSchemes.GENERALIZED_ALPHA.value:
-    alpha_f = 0.4
-    alpha_m = 0.2
+    time_stepper = GeneralizedAlpha(stiffness=stiffness, mass=mass, alpha_f=0.4, alpha_m=0.2)
 elif args.time_stepping == TimeSteppingSchemes.NEWMARK_BETA.value:
-    alpha_f = 0.0
-    alpha_m = 0.0
+    time_stepper = GeneralizedAlpha(stiffness=stiffness, mass=mass, alpha_f=0.0, alpha_m=0.0)
 elif args.time_stepping == TimeSteppingSchemes.RUNGE_KUTTA_4.value:
     raise Exception(f"Please use monolithic_rk4.py for using --time-stepping=\"{args.time_stepping}\"")
 else:
     raise Exception(f"Invalid time stepping scheme {args.time_stepping}. Please use one of {[ts.value for ts in TimeSteppingSchemes]}")
-
-gamma = 0.5 - alpha_m + alpha_f
-beta = 0.25 * (gamma + 0.5)
-
-m = 3*[None]
-m[0] = (1-alpha_m)/(beta*dt**2)
-m[1] = (1-alpha_m)/(beta*dt)
-m[2] = (1-alpha_m-2*beta)/(2*beta)
-k_bar = stiffness * (1 - alpha_f) + m[0] * mass
 
 positions = []
 velocities = []
@@ -163,8 +135,6 @@ while interface.is_coupling_ongoing():
         velocities += v_write
         times += t_write
 
-    t_f = (1-alpha_f) * dt
-
     t_start = t_cp  # time at beginning of the window
     t_end = t_start + window_dt  # time at end of the window
 
@@ -180,14 +150,12 @@ while interface.is_coupling_ongoing():
         ts = [t_start, t_end]
         fs = [f_start, f_end]
 
+    # do time stepping
+    t_f = time_stepper.rhs_eval_points(dt)
     f = do_lagrange_interpolation(t + t_f, ts, fs)
+    u_new, v_new, a_new = time_stepper.do_step(u, v, a, f, dt)
 
-    # do generalized alpha step
-    u_new = (f - alpha_f * stiffness * u + mass*(m[0]*u + m[1]*v + m[2]*a)) / k_bar
-    a_new = 1.0 / (beta * dt**2) * (u_new - u - dt * v) - (1-2*beta) / (2*beta) * a
-    v_new = v + dt * ((1-gamma)*a+gamma*a_new)
-
-    write_data = k_12 * u_new
+    write_data = oscillator.SpringMiddle.k * u_new
 
     if participant_name == ParticipantNames.MASS_LEFT.value:  # does two substeps per window
         interface.write_scalar_data(write_data_ids[0], vertex_id, write_data)
