@@ -15,7 +15,7 @@ The following examples are included here:
 
 ## Code Reproducibility
 
-It is generally recommended to use the appropriate version of the preCICE virtual machine[^3,^4] for run all experiments. See https://precice.org/installation-vm.html for details.
+It is generally recommended to use the appropriate version of the preCICE virtual machine[^3][^4] for run all experiments. See https://precice.org/installation-vm.html for details.
 
 [^1]: B. Rodenberg, **in preparation**
 [^2]: V. Schüller, B. Rodenberg, B. Uekermann and H. Bungartz, A Simple Test Case for Convergence Order in Time and Energy Conservation of Black-Box Coupling Schemes, in: WCCM-APCOM2022. URL https://www.scipedia.com/public/Rodenberg_2022a
