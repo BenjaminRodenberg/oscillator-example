@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, List
 import numpy as np
 import numbers
 
@@ -20,10 +20,13 @@ class GeneralizedAlpha():
         self.stiffness = stiffness
         self.mass = mass
 
-    def rhs_eval_points(self, dt) -> float:
-        return (1-self.alpha_f) * dt
+    def rhs_eval_points(self, dt) -> List[float]:
+        return [(1-self.alpha_f) * dt]
 
     def do_step(self, u, v, a, f, dt) -> Tuple[float, float, float]:
+        if type(f) is list:  # if f is list, turn it into a number
+            f = f[0]
+
         m = 3*[None]
         m[0] = (1-self.alpha_m)/(self.beta*dt**2)
         m[1] = (1-self.alpha_m)/(self.beta*dt)
@@ -58,29 +61,37 @@ class RungeKutta4():
         self.ode_system = ode_system
         pass
 
-    def rhs_eval_points(self, dt) -> float:
+    def rhs_eval_points(self, dt) -> List[float]:
         return [self.c[0], self.c[1]*dt, self.c[2]*dt, self.c[3]*dt]
 
     def do_step(self, u, v, a, f, dt) -> Tuple[float, float, float]:
         assert(type(u) == type(v))
 
+        n_stages = 4
+
+        if isinstance(f, numbers.Number):  # if f is number, assume constant f
+            f = n_stages*[f]
+
         if type(u) is np.ndarray:
             x = np.concatenate([u, v])
-            rhs = [np.concatenate([np.array([0, 0]), f[i]]) for i in range(4)]
+            rhs = [np.concatenate([np.array([0, 0]), f[i]]) for i in range(n_stages)]
         elif isinstance(u, numbers.Number):
             x = np.array([u, v])
-            rhs = [np.array([0, f[i]]) for i in range(4)]
+            rhs = [np.array([0, f[i]]) for i in range(n_stages)]
         else:
             raise Exception(f"Cannot handle input type {type(u)} of u and v")
 
 
-        s = 4*[None]  # stages
+        s = n_stages * [None]
         s[0] = self.ode_system.dot(x)                       + rhs[0]
         s[1] = self.ode_system.dot(x+self.a[1,0] * s[0]*dt) + rhs[1]
         s[2] = self.ode_system.dot(x+self.a[2,1] * s[1]*dt) + rhs[2]
         s[3] = self.ode_system.dot(x+self.a[3,2] * s[2]*dt) + rhs[3]
 
-        x_new = x + dt * (self.b[0] * s[0] + self.b[1] * s[1] + self.b[2] * s[2] + self.b[3] * s[3])
+        x_new = x
+
+        for i in range(n_stages):
+            x_new += dt * self.b[i] * s[i]
 
         if type(u) is np.ndarray:
             u_new = x_new[0:2]

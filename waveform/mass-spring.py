@@ -9,7 +9,7 @@ import pathlib
 from brot.enums import Cases, TimeSteppingSchemes, ReadWaveformSchemes, ParticipantNames, DataNames, MeshNames
 from brot.output import add_metainfo
 from brot.interpolation import do_linear_interpolation
-from brot.timesteppers import GeneralizedAlpha
+from brot.timesteppers import GeneralizedAlpha, RungeKutta4
 import brot.oscillator as oscillator
 
 this_file = pathlib.Path(__file__)
@@ -57,13 +57,16 @@ num_vertices = 1  # Number of vertices
 solver_process_index = 0
 solver_process_size = 1
 
-# Generalized Alpha Parameters
 if args.time_stepping == TimeSteppingSchemes.GENERALIZED_ALPHA.value:
     time_stepper = GeneralizedAlpha(stiffness=stiffness, mass=mass, alpha_f=0.4, alpha_m=0.2)
 elif args.time_stepping == TimeSteppingSchemes.NEWMARK_BETA.value:
     time_stepper = GeneralizedAlpha(stiffness=stiffness, mass=mass, alpha_f=0.0, alpha_m=0.0)
 elif args.time_stepping == TimeSteppingSchemes.RUNGE_KUTTA_4.value:
-    raise Exception(f"Please use monolithic_rk4.py for using --time-stepping=\"{args.time_stepping}\"")
+    ode_system = np.array([
+        [0,          mass], # du
+        [-stiffness, 0   ], # dv
+    ])
+    time_stepper = RungeKutta4(ode_system=ode_system)
 else:
     raise Exception(f"Invalid time stepping scheme {args.time_stepping}. Please use one of {[ts.value for ts in TimeSteppingSchemes]}")
 
@@ -149,7 +152,9 @@ for dt in dts:
         t_start = t_cp  # time at beginning of the window
         t_end = t_start + dt  # time at end of the window
 
-        f = do_linear_interpolation(t + t_f, (t_start, f_start), (t_end, f_end))
+        f = len(t_f)*[None]
+        for i in range(len(f)):
+            f[i] = do_linear_interpolation(t + t_f[i], (t_start, f_start), (t_end, f_end))
 
         u_new, v_new, a_new = time_stepper.do_step(u, v, a, f, dt)
 
