@@ -16,7 +16,7 @@ this_file = pathlib.Path(__file__)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("participantName", help="Name of the solver.", type=str)
-parser.add_argument("preciceConfig", nargs="?", help="precice-config.xml to be used.", type=pathlib.Path, default=this_file.parent / "precice-config-0.04-QN.xml")
+parser.add_argument("preciceConfig", nargs="?", help="precice-config.xml to be used.", type=pathlib.Path, default=this_file.parent / "configs" / "precice-config-0.04-QN.xml")
 parser.add_argument("-ts", "--time-stepping", help="Time stepping scheme being used.", type=str, default=TimeSteppingSchemes.NEWMARK_BETA.value)
 
 

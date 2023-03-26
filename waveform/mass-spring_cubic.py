@@ -78,7 +78,7 @@ errors = []
 
 for dt in dts:
     # use same dt for both solvers and preCICE
-    configuration_file_name = f"precice-config-{dt}-cubic.xml"
+    configuration_file_name = f"hermite_configs/precice-config-{dt}-cubic.xml"
     my_dt = dt
 
     interface = precice.Interface(participant_name, configuration_file_name,

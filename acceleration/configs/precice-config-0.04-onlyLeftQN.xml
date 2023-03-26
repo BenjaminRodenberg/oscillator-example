@@ -2,9 +2,9 @@
 
 <precice-configuration>
 
-  <log>
+  <!-- <log>
     <sink type="stream" output="stdout"  filter= "%Severity% > warning" format="preCICE:%ColorizedSeverity% %Message%" enabled="true" />
-  </log>
+  </log> -->
 
   <solver-interface dimensions="2" >
 
@@ -57,7 +57,6 @@
       <exchange data="Force-Right-2" mesh="Mass-Left-Mesh" from="Mass-Right" to="Mass-Left" initialize="true"/>
       <acceleration:IQN-ILS>
         <data name="Force-Left" mesh="Mass-Left-Mesh"/>
-        <data name="Force-Right-2" mesh="Mass-Left-Mesh"/>
         <initial-relaxation value="1.0"/>
         <max-used-iterations value="20"/>
         <time-windows-reused value="0"/>

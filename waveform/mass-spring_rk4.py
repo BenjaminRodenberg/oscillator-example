@@ -81,7 +81,7 @@ errors = []
 
 for dt in dts:
     # use same dt for both solvers and preCICE
-    configuration_file_name = f"precice-config-{dt}.xml"
+    configuration_file_name = f"configs/precice-config-{dt}.xml"
     my_dt = dt
 
     interface = precice.Interface(participant_name, configuration_file_name,
