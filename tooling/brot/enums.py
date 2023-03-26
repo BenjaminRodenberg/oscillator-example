@@ -14,6 +14,12 @@ class TimeSteppingSchemes(Enum):
     RUNGE_KUTTA_4 = "runge_kutta_4"
 
 
+class ReadWaveformSchemes(Enum):
+    LAGRANGE_LINEAR = "Lagrange interpolation, first order"
+    LAGRANGE_QUADRATIC = "Lagrange interpolation, second order"
+    HERMITE_CUBIC = "Hermite interpolation, third order"
+
+
 class ParticipantNames(Enum):
     MASS_LEFT = "Mass-Left"
     MASS_RIGHT = "Mass-Right"

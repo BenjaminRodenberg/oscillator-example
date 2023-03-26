@@ -8,14 +8,15 @@ import pathlib
 
 from brot.enums import Cases, TimeSteppingSchemes, ReadWaveformSchemes, ParticipantNames, DataNames, MeshNames
 from brot.output import add_metainfo
-from brot.interpolation import do_linear_interpolation
-from brot.timesteppers import RungeKutta4
+from brot.interpolation import do_cubic_interpolation
+from brot.timesteppers import GeneralizedAlpha
 import brot.oscillator as oscillator
 
 this_file = pathlib.Path(__file__)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("participantName", help="Name of the solver.", type=str)
+parser.add_argument("-ts", "--time-stepping", help="Time stepping scheme being used.", type=str, default=TimeSteppingSchemes.NEWMARK_BETA.value)
 
 try:
     args = parser.parse_args()
@@ -51,26 +52,22 @@ elif participant_name == ParticipantNames.MASS_RIGHT.value:
 else:
     raise Exception(f"wrong participant name: {participant_name}. Please use one of {[p.value for p in ParticipantNames]}.")
 
-# system:
-# m ddu + k u = 0
-#
-# formulated as first order system
-# dv = - k/m u
-# du = v
-
-ode_system = np.array([
-    [0,          mass], # du
-    [-stiffness, 0   ], # dv
-])
-
 num_vertices = 1  # Number of vertices
 
 solver_process_index = 0
 solver_process_size = 1
 
-time_stepper = RungeKutta4(ode_system=ode_system)
+# Generalized Alpha Parameters
+if args.time_stepping == TimeSteppingSchemes.GENERALIZED_ALPHA.value:
+    time_stepper = GeneralizedAlpha(stiffness=stiffness, mass=mass, alpha_f=0.4, alpha_m=0.2)
+elif args.time_stepping == TimeSteppingSchemes.NEWMARK_BETA.value:
+    time_stepper = GeneralizedAlpha(stiffness=stiffness, mass=mass, alpha_f=0.0, alpha_m=0.0)
+elif args.time_stepping == TimeSteppingSchemes.RUNGE_KUTTA_4.value:
+    raise Exception(f"Please use monolithic_rk4.py for using --time-stepping=\"{args.time_stepping}\"")
+else:
+    raise Exception(f"Invalid time stepping scheme {args.time_stepping}. Please use one of {[ts.value for ts in TimeSteppingSchemes]}")
 
-print(f"time stepping scheme being used: {TimeSteppingSchemes.RUNGE_KUTTA_4.value}")
+print(f"time stepping scheme being used: {args.time_stepping}")
 print(f"participant: {participant_name}")
 print()
 print("dt, error")
@@ -81,11 +78,11 @@ errors = []
 
 for dt in dts:
     # use same dt for both solvers and preCICE
-    configuration_file_name = f"precice-config-{dt}.xml"
+    configuration_file_name = f"precice-config-{dt}-cubic.xml"
     my_dt = dt
 
     interface = precice.Interface(participant_name, configuration_file_name,
-                                  solver_process_index, solver_process_size)
+                                solver_process_index, solver_process_size)
 
     mesh_id = interface.get_mesh_id(mesh_name)
     dimensions = interface.get_dimensions()
@@ -93,10 +90,13 @@ for dt in dts:
     vertex = np.zeros(dimensions)
     read_data = np.zeros(num_vertices)
     write_data = oscillator.SpringMiddle.k * u0 * np.ones(num_vertices)
+    d_dt_write_data = oscillator.SpringMiddle.k * v0 * np.ones(num_vertices)
 
     vertex_id = interface.set_mesh_vertex(mesh_id, vertex)
     read_data_id = interface.get_data_id(read_data_name, mesh_id)
+    d_dt_read_data_id = interface.get_data_id("d_dt_"+read_data_name, mesh_id)
     write_data_id = interface.get_data_id(write_data_name, mesh_id)
+    d_dt_write_data_id = interface.get_data_id("d_dt_"+write_data_name, mesh_id)
 
     precice_dt = interface.initialize()
     dt = np.min([precice_dt, my_dt])
@@ -111,9 +111,12 @@ for dt in dts:
 
     # Initial Conditions
 
+    a0 = (f0 - stiffness * u0) / mass
     u = u0
     v = v0
+    a = a0
     f_start = f_end = f0
+    d_dt_f_start = d_dt_f_end = d_dt_f0
     t = 0
 
     positions = []
@@ -129,8 +132,10 @@ for dt in dts:
                 precice.action_write_iteration_checkpoint()):
             u_cp = u
             v_cp = v
+            a_cp = a
             t_cp = t
             f_start = f_end  # force at the beginning of the window
+            d_dt_f_start = d_dt_f_end  # time derivative of force at the beginning of the window
             interface.mark_action_fulfilled(
                 precice.action_write_iteration_checkpoint())
 
@@ -140,25 +145,28 @@ for dt in dts:
             times += t_write
 
         read_data = interface.read_scalar_data(read_data_id, vertex_id)
+        d_dt_read_data = interface.read_scalar_data(d_dt_read_data_id, vertex_id)
 
-        # do rk4 step
-        t_stage = time_stepper.rhs_eval_points(dt)
+        # do time stepping
+        t_f = time_stepper.rhs_eval_points(dt)
 
         # implementation of waveform iteration in adapter
         f_end = read_data  # preCICE v2 returns value at end of window by default
+        d_dt_f_end = d_dt_read_data  # preCICE v2 returns value at end of window by default
+        t_start = t_cp  # time at beginning of the window
+        t_end = t_start + dt  # time at end of the window
         t_start = t_cp  # time at beginning of the window
         t_end = t_start + dt  # time at end of the window
 
-        f = 4*[None]
-        for i in range(4):
-            f[i] = do_linear_interpolation(t + t_stage[i], (t_start, f_start), (t_end, f_end))
+        f = do_cubic_interpolation(t + t_f, (t_start, f_start, d_dt_f_start), (t_end, f_end, d_dt_f_end))
 
-        u_new, v_new, a_new = time_stepper.do_step(u, v, None, f, dt)
+        u_new, v_new, a_new = time_stepper.do_step(u, v, a, f, dt)
 
         write_data = oscillator.SpringMiddle.k * u_new
+        d_dt_write_data = oscillator.SpringMiddle.k * v_new
 
-        interface.write_scalar_data(
-            write_data_id, vertex_id, write_data)
+        interface.write_scalar_data(write_data_id, vertex_id, write_data)
+        interface.write_scalar_data(d_dt_write_data_id, vertex_id, d_dt_write_data)
 
         precice_dt = interface.advance(dt)
         dt = np.min([precice_dt, my_dt])
@@ -167,6 +175,7 @@ for dt in dts:
                 precice.action_read_iteration_checkpoint()):
             u = u_cp
             v = v_cp
+            a = a_cp
             t = t_cp
             interface.mark_action_fulfilled(
                 precice.action_read_iteration_checkpoint())
@@ -179,6 +188,7 @@ for dt in dts:
         else:
             u = u_new
             v = v_new
+            a = a_new
             t += dt
 
             # write data to buffers
@@ -203,7 +213,7 @@ df.index.name = "dt"
 df["error"] = errors
 
 time_stepping_scheme = TimeSteppingSchemes.RUNGE_KUTTA_4.value
-filepath = this_file.parent / f"{Cases.WAVEFORM.value}_{time_stepping_scheme}.csv"
+filepath = this_file.parent / f"{Cases.WAVEFORM.value}_cubic_{time_stepping_scheme}.csv"
 df.to_csv(filepath)
 
-add_metainfo(this_file, filepath, time_stepping_scheme, precice.__version__, ReadWaveformSchemes.LAGRANGE_LINEAR.value)
+add_metainfo(this_file, filepath, time_stepping_scheme, precice.__version__, ReadWaveformSchemes.HERMITE_CUBIC.value)

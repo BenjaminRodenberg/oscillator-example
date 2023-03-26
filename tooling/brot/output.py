@@ -3,7 +3,7 @@ import pathlib
 
 from .enums import Cases, TimeSteppingSchemes
 
-def add_metainfo(runner_file, csv_file, time_stepping_scheme, precice_version='not available'):
+def add_metainfo(runner_file, csv_file, time_stepping_scheme, precice_version='not available', read_waveform_scheme='not available'):
     repo_base = runner_file.parent / ".."
 
     repo = git.Repo(repo_base)
@@ -20,6 +20,7 @@ def add_metainfo(runner_file, csv_file, time_stepping_scheme, precice_version='n
         f"# executable: {pathlib.Path(runner_file.resolve()).relative_to(repo_base.resolve())}\n"
         f"# experiment: {Cases.MONOLITHIC.value}\n"
         f"# time stepping scheme: {time_stepping_scheme}\n"
+        f"# read waveform order: {read_waveform_scheme}\n"
     )
 
     with open(csv_file, "r") as original:

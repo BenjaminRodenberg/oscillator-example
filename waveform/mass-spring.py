@@ -6,7 +6,7 @@ import pandas as pd
 import precice
 import pathlib
 
-from brot.enums import Cases, TimeSteppingSchemes, ParticipantNames, DataNames, MeshNames
+from brot.enums import Cases, TimeSteppingSchemes, ReadWaveformSchemes, ParticipantNames, DataNames, MeshNames
 from brot.output import add_metainfo
 from brot.interpolation import do_linear_interpolation
 from brot.timesteppers import GeneralizedAlpha
@@ -206,4 +206,4 @@ time_stepping_scheme = args.time_stepping
 filepath = this_file.parent / f"{Cases.WAVEFORM.value}_{time_stepping_scheme}.csv"
 df.to_csv(filepath)
 
-add_metainfo(this_file, filepath, time_stepping_scheme, precice.__version__)
+add_metainfo(this_file, filepath, time_stepping_scheme, precice.__version__, ReadWaveformSchemes.LAGRANGE_LINEAR.value)
