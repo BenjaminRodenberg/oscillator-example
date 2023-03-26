@@ -1,2 +1,6 @@
 **.csv
 **/__pycache__
+**/*-events-summary.log
+**/*-events.json
+**/*-iterations.log
+**/*-convergence.log
