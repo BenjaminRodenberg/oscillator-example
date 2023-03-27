@@ -15,9 +15,9 @@ class TimeSteppingSchemes(Enum):
 
 
 class ReadWaveformSchemes(Enum):
-    LAGRANGE_LINEAR = "Lagrange interpolation, first order"
-    LAGRANGE_QUADRATIC = "Lagrange interpolation, second order"
-    HERMITE_CUBIC = "Hermite interpolation, third order"
+    LAGRANGE_LINEAR = "Lagrange_linear"  # Lagrange interpolation, first order"
+    LAGRANGE_QUADRATIC = "Lagrange_quadratic"  # Lagrange interpolation, second order"
+    HERMITE_CUBIC = "Hermite_cubic"  # Hermite interpolation, third order"
 
 
 class ParticipantNames(Enum):
