@@ -216,7 +216,7 @@ df.index.name = "dt"
 df["error"] = errors
 
 time_stepping_scheme = TimeSteppingSchemes.RUNGE_KUTTA_4.value
-filepath = this_file.parent / f"{Cases.WAVEFORM.value}_cubic_{time_stepping_scheme}.csv"
+filepath = this_file.parent / f"{Cases.WAVEFORM.value}_{participant_name}_cubic_{time_stepping_scheme}.csv"
 df.to_csv(filepath)
 
 add_metainfo(this_file, filepath, time_stepping_scheme, precice.__version__, ReadWaveformSchemes.HERMITE_CUBIC.value)

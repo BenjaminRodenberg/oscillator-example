@@ -208,7 +208,7 @@ df.index.name = "dt"
 df["error"] = errors
 
 time_stepping_scheme = args.time_stepping
-filepath = this_file.parent / f"{Cases.WAVEFORM.value}_{time_stepping_scheme}.csv"
+filepath = this_file.parent / f"{Cases.WAVEFORM.value}_{participant_name}_{time_stepping_scheme}.csv"
 df.to_csv(filepath)
 
 add_metainfo(this_file, filepath, time_stepping_scheme, precice.__version__, ReadWaveformSchemes.LAGRANGE_LINEAR.value)
