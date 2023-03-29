@@ -215,7 +215,7 @@ df = pd.DataFrame(index=dts)
 df.index.name = "dt"
 df["error"] = errors
 
-time_stepping_scheme = TimeSteppingSchemes.RUNGE_KUTTA_4.value
+time_stepping_scheme = args.time_stepping
 filepath = this_file.parent / f"{Cases.WAVEFORM.value}_{participant_name}_cubic_{time_stepping_scheme}.csv"
 df.to_csv(filepath)
 
