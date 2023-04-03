@@ -8,15 +8,16 @@ import pathlib
 
 from brot.enums import Cases, TimeSteppingSchemes, ReadWaveformSchemes, ParticipantNames, DataNames, MeshNames
 from brot.output import add_metainfo
-from brot.interpolation import do_linear_interpolation
+from brot.interpolation import do_linear_interpolation, do_cubic_interpolation
 from brot.timesteppers import GeneralizedAlpha, RungeKutta4
 import brot.oscillator as oscillator
 
 this_file = pathlib.Path(__file__)
 
 parser = argparse.ArgumentParser()
-parser.add_argument("participantName", help="Name of the solver.", type=str)
-parser.add_argument("-ts", "--time-stepping", help="Time stepping scheme being used.", type=str, default=TimeSteppingSchemes.NEWMARK_BETA.value)
+parser.add_argument("participantName", help=f"Name of the solver. Please use one of {[p.value for p in ParticipantNames]}.", type=str)
+parser.add_argument("-ts", "--time-stepping", help=f"Time stepping scheme being used. Please use one of {[ts.value for ts in TimeSteppingSchemes]}", type=str, default=TimeSteppingSchemes.NEWMARK_BETA.value)
+parser.add_argument("-is", "--interpolation-scheme", help=f"Interpolation scheme being used. Please use one of {[p.value for p in ReadWaveformSchemes]}.", type=str, default=ReadWaveformSchemes.LAGRANGE_LINEAR.value)
 
 try:
     args = parser.parse_args()
@@ -77,11 +78,23 @@ print("dt, error")
 
 dts = [0.04, 0.02, 0.01, 0.005, 0.0025]
 
+if args.interpolation_scheme == ReadWaveformSchemes.LAGRANGE_LINEAR.value:
+    interpolation_scheme = ReadWaveformSchemes.LAGRANGE_LINEAR.value
+elif args.interpolation_scheme == ReadWaveformSchemes.HERMITE_CUBIC.value:
+    interpolation_scheme = ReadWaveformSchemes.HERMITE_CUBIC.value
+else:
+    raise Exception(f"wrong interpolation scheme name: {args.interpolation_scheme}. Please use one of {[p.value for p in ReadWaveformSchemes]}.")
+
 errors = []
 
 for dt in dts:
     # use same dt for both solvers and preCICE
-    configuration_file_name = f"configs/precice-config-{dt}.xml"
+
+    if interpolation_scheme == ReadWaveformSchemes.LAGRANGE_LINEAR.value:
+        configuration_file_name = f"configs/precice-config-{dt}.xml"
+    elif interpolation_scheme == ReadWaveformSchemes.HERMITE_CUBIC.value:
+        configuration_file_name = f"hermite_configs/precice-config-{dt}-cubic.xml"
+
     my_dt = dt
 
     interface = precice.Interface(participant_name, configuration_file_name,
@@ -97,6 +110,11 @@ for dt in dts:
     vertex_id = interface.set_mesh_vertex(mesh_id, vertex)
     read_data_id = interface.get_data_id(read_data_name, mesh_id)
     write_data_id = interface.get_data_id(write_data_name, mesh_id)
+
+    if(interpolation_scheme == ReadWaveformSchemes.HERMITE_CUBIC.value):
+        d_dt_write_data = oscillator.SpringMiddle.k * v0 * np.ones(num_vertices)
+        d_dt_read_data_id = interface.get_data_id("d_dt_"+read_data_name, mesh_id)
+        d_dt_write_data_id = interface.get_data_id("d_dt_"+write_data_name, mesh_id)
 
     precice_dt = interface.initialize()
     dt = np.min([precice_dt, my_dt])
@@ -118,6 +136,9 @@ for dt in dts:
     f_start = f_end = f0
     t = 0
 
+    if(interpolation_scheme == ReadWaveformSchemes.HERMITE_CUBIC.value):
+        d_dt_f_start = d_dt_f_end = d_dt_f0
+
     positions = []
     velocities = []
     times = []
@@ -134,6 +155,10 @@ for dt in dts:
             a_cp = a
             t_cp = t
             f_start = f_end  # force at the beginning of the window
+
+            if(interpolation_scheme == ReadWaveformSchemes.HERMITE_CUBIC.value):
+                d_dt_f_start = d_dt_f_end  # time derivative of force at the beginning of the window
+
             interface.mark_action_fulfilled(
                 precice.action_write_iteration_checkpoint())
 
@@ -144,24 +169,36 @@ for dt in dts:
 
         read_data = interface.read_scalar_data(read_data_id, vertex_id)
 
+        if(interpolation_scheme == ReadWaveformSchemes.HERMITE_CUBIC.value):
+            d_dt_read_data = interface.read_scalar_data(d_dt_read_data_id, vertex_id)
+
         # do time stepping
         t_f = time_stepper.rhs_eval_points(dt)
 
         # implementation of waveform iteration in adapter
         f_end = read_data  # preCICE v2 returns value at end of window by default
+
+        if(interpolation_scheme == ReadWaveformSchemes.HERMITE_CUBIC.value):
+            d_dt_f_end = d_dt_read_data  # preCICE v2 returns value at end of window by default
+
         t_start = t_cp  # time at beginning of the window
         t_end = t_start + dt  # time at end of the window
 
         f = len(t_f)*[None]
-        for i in range(len(f)):
-            f[i] = do_linear_interpolation(t + t_f[i], (t_start, f_start), (t_end, f_end))
+        for i in range(len(t_f)):
+            if(interpolation_scheme == ReadWaveformSchemes.LAGRANGE_LINEAR.value):
+                f[i] = do_linear_interpolation(t + t_f[i], (t_start, f_start), (t_end, f_end))
+            elif(interpolation_scheme == ReadWaveformSchemes.HERMITE_CUBIC.value):
+                f[i] = do_cubic_interpolation(t + t_f[i], (t_start, f_start, d_dt_f_start), (t_end, f_end, d_dt_f_end))
 
         u_new, v_new, a_new = time_stepper.do_step(u, v, a, f, dt)
 
         write_data = oscillator.SpringMiddle.k * u_new
+        interface.write_scalar_data(write_data_id, vertex_id, write_data)
 
-        interface.write_scalar_data(
-            write_data_id, vertex_id, write_data)
+        if(interpolation_scheme == ReadWaveformSchemes.HERMITE_CUBIC.value):
+            d_dt_write_data = oscillator.SpringMiddle.k * v_new
+            interface.write_scalar_data(d_dt_write_data_id, vertex_id, d_dt_write_data)
 
         precice_dt = interface.advance(dt)
         dt = np.min([precice_dt, my_dt])
@@ -208,7 +245,7 @@ df.index.name = "dt"
 df["error"] = errors
 
 time_stepping_scheme = args.time_stepping
-filepath = this_file.parent / f"{Cases.WAVEFORM.value}_{participant_name}_{time_stepping_scheme}.csv"
+filepath = this_file.parent / f"{Cases.WAVEFORM.value}_{participant_name}_{interpolation_scheme}_{time_stepping_scheme}.csv"
 df.to_csv(filepath)
 
-add_metainfo(this_file, filepath, time_stepping_scheme, precice.__version__, ReadWaveformSchemes.LAGRANGE_LINEAR.value)
+add_metainfo(this_file, filepath, time_stepping_scheme, precice.__version__, ReadWaveformSchemes.HERMITE_CUBIC.value)

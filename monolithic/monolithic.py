@@ -14,13 +14,7 @@ import brot.oscillator as oscillator
 this_file = pathlib.Path(__file__)
 
 parser = argparse.ArgumentParser()
-parser.add_argument(
-    "-ts",
-    "--time-stepping",
-    help="Time stepping scheme being used.",
-    type=str,
-    default=TimeSteppingSchemes.NEWMARK_BETA.value,
-)
+parser.add_argument("-ts", "--time-stepping", help=f"Time stepping scheme being used. Please use one of {[ts.value for ts in TimeSteppingSchemes]}", type=str, default=TimeSteppingSchemes.NEWMARK_BETA.value)
 args = parser.parse_args()
 
 M = oscillator.M
