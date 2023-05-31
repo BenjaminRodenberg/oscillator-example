@@ -6,7 +6,7 @@ import pandas as pd
 import precice
 import pathlib
 
-from brot.enums import Cases, TimeSteppingSchemes, ReadWaveformSchemes, ParticipantNames, DataNames, MeshNames
+from brot.enums import Cases, TimeSteppingSchemes, ReadWaveformSchemes, MultirateMode, ParticipantNames, DataNames, MeshNames
 from brot.output import add_metainfo
 from brot.timesteppers import GeneralizedAlpha, RungeKutta4
 import brot.oscillator as oscillator
@@ -17,6 +17,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("participantName", help="Name of the solver.", type=str)
 parser.add_argument("-ts", "--time-stepping", help="Time stepping scheme being used.", type=str, default=TimeSteppingSchemes.NEWMARK_BETA.value)
 parser.add_argument("-is", "--interpolation-scheme", help="Interpolation scheme being used.", type=str, default=ReadWaveformSchemes.ZERO.value)
+parser.add_argument("-mr", "--multirate", help="Pick one of 3 modes for multirate", type=str, default=MultirateMode.NONE.value)
 
 try:
     args = parser.parse_args()
@@ -79,21 +80,42 @@ dts = [0.04, 0.02, 0.01, 0.005, 0.0025]
 
 if args.interpolation_scheme == ReadWaveformSchemes.ZERO.value:
     interpolation_scheme = ReadWaveformSchemes.ZERO.value
-elif args.interpolation_scheme == ReadWaveformSchemes.LAGRANGE_LINEAR.value:
-    interpolation_scheme = ReadWaveformSchemes.LAGRANGE_LINEAR.value
+elif args.interpolation_scheme == ReadWaveformSchemes.BSPLINE_LINEAR.value:
+    interpolation_scheme = ReadWaveformSchemes.BSPLINE_LINEAR.value
+elif args.interpolation_scheme == ReadWaveformSchemes.BSPLINE_CUBIC.value:
+    interpolation_scheme = ReadWaveformSchemes.BSPLINE_CUBIC.value
 else:
     raise Exception(f"wrong interpolation scheme name: {args.interpolation_scheme}. Please use one of {[p.value for p in ReadWaveformSchemes]}.")
 
 errors = []
 
 for dt in dts:
-    # use same dt for both solvers and preCICE
-    my_dt = dt
+    if args.multirate == MultirateMode.NONE.value:
+        # use same dt for both solvers and preCICE
+        my_dt = dt
+        precice_dt = dt
+    elif args.multirate == MultirateMode.SUBCYCLING.value:
+        # use fixed dt for preCICE
+        precice_dt = 0.04
+        my_dt = dt
+    elif args.multirate == MultirateMode.MULTIRATE.value:
+        # use fixed dt for preCICE
+        precice_dt = 0.04
+        if participant_name == ParticipantNames.MASS_LEFT.value:
+            # use fixed dt for left participant
+            my_dt = 0.01
+        elif participant_name == ParticipantNames.MASS_RIGHT.value:
+            my_dt = dt
+    else:
+        raise Exception(f"wrong multirate mode: {args.multirate}. Please use one of {[m.value for m in MultirateMode]}.")
+
 
     if args.interpolation_scheme == ReadWaveformSchemes.ZERO.value:
-        configuration_file_name = f"configs/precice-config-{dt}.xml"
-    elif args.interpolation_scheme == ReadWaveformSchemes.LAGRANGE_LINEAR.value:
-        configuration_file_name = f"configs_waveform-order_1/precice-config-{dt}.xml"
+        configuration_file_name = f"configs/precice-config-{precice_dt}.xml"
+    elif args.interpolation_scheme == ReadWaveformSchemes.BSPLINE_LINEAR.value:
+        configuration_file_name = f"configs_waveform-order_1/precice-config-{precice_dt}.xml"
+    elif args.interpolation_scheme == ReadWaveformSchemes.BSPLINE_CUBIC.value:
+        configuration_file_name = f"configs_waveform-order_3/precice-config-{precice_dt}.xml"
 
     participant = precice.Participant(participant_name, configuration_file_name, solver_process_index, solver_process_size)
 
@@ -143,9 +165,11 @@ for dt in dts:
             times += t_write
 
         t_f = time_stepper.rhs_eval_points(dt)
+        f = len(t_f)*[None]
 
-        read_data = participant.read_data(mesh_name, read_data_name, vertex_ids, t_f[0])
-        f = read_data[0]
+        for i in range(len(t_f)):
+            read_data = participant.read_data(mesh_name, read_data_name, vertex_ids, t_f[i])
+            f[i] = read_data[0]
 
         # do time stepping
         u_new, v_new, a_new = time_stepper.do_step(u, v, a, f, dt)
@@ -197,7 +221,7 @@ df.index.name = "dt"
 df["error"] = errors
 
 time_stepping_scheme = args.time_stepping
-filepath = this_file.parent / f"{Cases.PRECICE3.value}_{participant_name}_{time_stepping_scheme}_{interpolation_scheme}.csv"
+filepath = this_file.parent / f"{Cases.PRECICE3.value}_{participant_name}_{time_stepping_scheme}_{interpolation_scheme}_{args.multirate}.csv"
 df.to_csv(filepath)
 
 add_metainfo(this_file, filepath, time_stepping_scheme, precice.__version__, interpolation_scheme)
