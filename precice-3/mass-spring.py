@@ -74,7 +74,7 @@ else:
 print(f"time stepping scheme being used: {args.time_stepping}")
 print(f"participant: {participant_name}")
 print()
-print("dt, error")
+print("configured_precice_dt, my_dt, error")
 
 dts = [0.04, 0.02, 0.01, 0.005, 0.0025]
 
@@ -84,23 +84,30 @@ elif args.interpolation_scheme == ReadWaveformSchemes.BSPLINE_LINEAR.value:
     interpolation_scheme = ReadWaveformSchemes.BSPLINE_LINEAR.value
 elif args.interpolation_scheme == ReadWaveformSchemes.BSPLINE_CUBIC.value:
     interpolation_scheme = ReadWaveformSchemes.BSPLINE_CUBIC.value
+elif args.interpolation_scheme == ReadWaveformSchemes.BSPLINE_TEN.value:
+    interpolation_scheme = ReadWaveformSchemes.BSPLINE_TEN.value
 else:
     raise Exception(f"wrong interpolation scheme name: {args.interpolation_scheme}. Please use one of {[p.value for p in ReadWaveformSchemes]}.")
 
 errors = []
+my_dts = []
 
 for dt in dts:
     if args.multirate == MultirateMode.NONE.value:
         # use same dt for both solvers and preCICE
         my_dt = dt
-        precice_dt = dt
+        configured_precice_dt = dt
     elif args.multirate == MultirateMode.SUBCYCLING.value:
         # use fixed dt for preCICE
-        precice_dt = 0.04
-        my_dt = dt
+        configured_precice_dt = np.max(dts)
+        my_dt = dt / 4
+    elif args.multirate == MultirateMode.FOUR_SUBSTEPS.value:
+        configured_precice_dt = dt
+        # always use four substeps
+        my_dt = dt / 4
     elif args.multirate == MultirateMode.MULTIRATE.value:
         # use fixed dt for preCICE
-        precice_dt = 0.04
+        configured_precice_dt = 0.04
         if participant_name == ParticipantNames.MASS_LEFT.value:
             # use fixed dt for left participant
             my_dt = 0.01
@@ -111,11 +118,13 @@ for dt in dts:
 
 
     if args.interpolation_scheme == ReadWaveformSchemes.ZERO.value:
-        configuration_file_name = f"configs/precice-config-{precice_dt}.xml"
+        configuration_file_name = f"configs/precice-config-{configured_precice_dt}.xml"
     elif args.interpolation_scheme == ReadWaveformSchemes.BSPLINE_LINEAR.value:
-        configuration_file_name = f"configs_waveform-order_1/precice-config-{precice_dt}.xml"
+        configuration_file_name = f"configs_waveform-order_1/precice-config-{configured_precice_dt}.xml"
     elif args.interpolation_scheme == ReadWaveformSchemes.BSPLINE_CUBIC.value:
-        configuration_file_name = f"configs_waveform-order_3/precice-config-{precice_dt}.xml"
+        configuration_file_name = f"configs_waveform-order_3/precice-config-{configured_precice_dt}.xml"
+    elif args.interpolation_scheme == ReadWaveformSchemes.BSPLINE_TEN.value:
+        configuration_file_name = f"configs_waveform-order_10/precice-config-{configured_precice_dt}.xml"
 
     participant = precice.Participant(participant_name, configuration_file_name, solver_process_index, solver_process_size)
 
@@ -214,10 +223,12 @@ for dt in dts:
     # analytic solution is only valid for this setup!
     error = np.max(abs(u_analytical(np.array(times))-np.array(positions)))
     errors.append(error)
-    print(f"{dt},{error}")
+    my_dts.append(my_dt)
+    print(f"{configured_precice_dt}, {my_dt}, {error}")
 
 df = pd.DataFrame(index=dts)
 df.index.name = "dt"
+df["my_dt"] = my_dts
 df["error"] = errors
 
 time_stepping_scheme = args.time_stepping

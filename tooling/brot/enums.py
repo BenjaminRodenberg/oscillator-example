@@ -21,11 +21,13 @@ class ReadWaveformSchemes(Enum):
     HERMITE_CUBIC = "Hermite_cubic"  # Hermite interpolation, third order
     BSPLINE_LINEAR = "BSpline_linear"  # Linear BSplines
     BSPLINE_CUBIC = "BSpline_cubic"  # Cubic BSplines
+    BSPLINE_TEN = "BSpline_ten"  # tenth order BSplines
 
 
 class MultirateMode(Enum):
     NONE = "None"  # Don't use any multirate
     SUBCYCLING = "Subcycling"  # Use fixed window size and apply subcycling on both sides
+    FOUR_SUBSTEPS = "Four_substeps"  # Reduce window size and apply subcycling to always use four substeps
     MULTIRATE = "Multirate"  # Use fixed window size, perform 4 substeps on the left side and apply subcycling on the right
 
 

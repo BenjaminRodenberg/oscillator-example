@@ -62,7 +62,7 @@ class RungeKutta4():
         pass
 
     def rhs_eval_points(self, dt) -> List[float]:
-        return [self.c[0], self.c[1]*dt, self.c[2]*dt, self.c[3]*dt]
+        return [self.c[0] * dt, self.c[1]*dt, self.c[2]*dt, self.c[3]*dt]
 
     def do_step(self, u, v, a, f, dt) -> Tuple[float, float, float]:
         assert(type(u) == type(v))

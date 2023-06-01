@@ -6,7 +6,7 @@ import pandas as pd
 import precice
 import pathlib
 
-from brot.enums import Cases, TimeSteppingSchemes, ReadWaveformSchemes, ParticipantNames, DataNames, MeshNames
+from brot.enums import Cases, TimeSteppingSchemes, MultirateMode, ParticipantNames, DataNames, MeshNames
 from brot.output import add_metainfo
 from brot.timesteppers import GeneralizedAlpha, RungeKutta4
 import brot.oscillator as oscillator
@@ -16,6 +16,7 @@ this_file = pathlib.Path(__file__)
 parser = argparse.ArgumentParser()
 parser.add_argument("participantName", help="Name of the solver.", type=str)
 parser.add_argument("-ts", "--time-stepping", help="Time stepping scheme being used.", type=str, default=TimeSteppingSchemes.NEWMARK_BETA.value)
+parser.add_argument("-mr", "--multirate", help="Pick one of 3 modes for multirate", type=str, default=MultirateMode.NONE.value)
 
 try:
     args = parser.parse_args()
@@ -72,16 +73,39 @@ else:
 print(f"time stepping scheme being used: {args.time_stepping}")
 print(f"participant: {participant_name}")
 print()
-print("dt, error")
+print("configured_precice_dt, my_dt, error")
 
-dts = [0.04, 0.02, 0.01, 0.005, 0.0025]
+dts = [0.04, 0.02, 0.01, 0.005, 0.0025, 0.00125, 0.000625]
 
 errors = []
+my_dts = []
 
 for dt in dts:
+    if args.multirate == MultirateMode.NONE.value:
+        # use same dt for both solvers and preCICE
+        my_dt = dt
+        configured_precice_dt = dt
+    elif args.multirate == MultirateMode.SUBCYCLING.value:
+        # use fixed dt for preCICE
+        configured_precice_dt = np.max(dts)
+        my_dt = dt / 4
+    elif args.multirate == MultirateMode.FOUR_SUBSTEPS.value:
+        configured_precice_dt = dt
+        # always use four substeps
+        my_dt = dt / 4
+    elif args.multirate == MultirateMode.MULTIRATE.value:
+        # use fixed dt for preCICE
+        configured_precice_dt = 0.04
+        if participant_name == ParticipantNames.MASS_LEFT.value:
+            # use fixed dt for left participant
+            my_dt = 0.01
+        elif participant_name == ParticipantNames.MASS_RIGHT.value:
+            my_dt = dt
+    else:
+        raise Exception(f"wrong multirate mode: {args.multirate}. Please use one of {[m.value for m in MultirateMode]}.")
+
     # use same dt for both solvers and preCICE
-    configuration_file_name = f"configs/precice-config-{dt}.xml"
-    my_dt = dt
+    configuration_file_name = f"configs/precice-config-{configured_precice_dt}.xml"
 
     interface = precice.Interface(participant_name, configuration_file_name,
                                 solver_process_index, solver_process_size)
@@ -190,14 +214,16 @@ for dt in dts:
     # analytic solution is only valid for this setup!
     error = np.max(abs(u_analytical(np.array(times))-np.array(positions)))
     errors.append(error)
-    print(f"{dt},{error}")
+    my_dts.append(my_dt)
+    print(f"{configured_precice_dt}, {my_dt}, {error}")
 
 df = pd.DataFrame(index=dts)
 df.index.name = "dt"
+df["my_dt"] = my_dts
 df["error"] = errors
 
 time_stepping_scheme = args.time_stepping
-filepath = this_file.parent / f"{Cases.PRECICE2.value}_{participant_name}_{time_stepping_scheme}.csv"
+filepath = this_file.parent / f"{Cases.PRECICE2.value}_{participant_name}_{time_stepping_scheme}_{args.multirate}.csv"
 df.to_csv(filepath)
 
 add_metainfo(this_file, filepath, time_stepping_scheme, precice.__version__)
