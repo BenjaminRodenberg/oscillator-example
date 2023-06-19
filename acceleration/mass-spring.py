@@ -160,6 +160,7 @@ while interface.is_coupling_ongoing():
     if participant_name == ParticipantNames.MASS_LEFT.value:  # does two substeps per window
         interface.write_scalar_data(write_data_ids[0], vertex_id, write_data)
     elif participant_name == ParticipantNames.MASS_RIGHT.value:  # does one step per window
+        # TODO: This is wrong! We should only write ALL data before the last advance of the window, otherwise data will be reset for subsequent advance calls.
         interface.write_scalar_data(write_data_ids[substep], vertex_id, write_data)
 
     precice_dt = interface.advance(dt)
