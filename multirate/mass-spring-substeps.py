@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import precice
 import pathlib
+from substeps_configs.create_config import render
 
 from brot.enums import Cases, TimeSteppingSchemes, ReadWaveformSchemes, MultirateMode, ParticipantNames, DataNames, MeshNames
 from brot.output import add_metainfo
@@ -14,11 +15,16 @@ import brot.oscillator as oscillator
 
 this_file = pathlib.Path(__file__)
 
+n_substeps_default = 1
+
 parser = argparse.ArgumentParser()
 parser.add_argument("participantName", help="Name of the solver.", type=str)
-parser.add_argument("-ts", "--time-stepping", help="Time stepping scheme being used.", type=str, default=TimeSteppingSchemes.NEWMARK_BETA.value)
-parser.add_argument("-is", "--interpolation-scheme", help="Interpolation scheme being used.", type=str, default=ReadWaveformSchemes.LAGRANGE_QUADRATIC.value)
-parser.add_argument("-mr", "--multirate", help="Pick one of 3 modes for multirate", type=str, default=MultirateMode.TWO_SUBSTEPS.value)
+parser.add_argument("-tsl", "--time-stepping-left", help="Time stepping scheme being used for Mass-Left.", type=str, default=TimeSteppingSchemes.NEWMARK_BETA.value)
+parser.add_argument("-tsr", "--time-stepping-right", help="Time stepping scheme being used for Mass-Right.", type=str, default=TimeSteppingSchemes.NEWMARK_BETA.value)
+parser.add_argument("-is", "--interpolation-scheme", help="Interpolation scheme being used.", type=str, default=ReadWaveformSchemes.LAGRANGE.value)
+parser.add_argument("-io", "--interpolation-order", help="Desired order of interpolation scheme.", type=int, default=1)
+parser.add_argument("-nl", "--n-substeps-left", help="Number of substeps in one window for Mass-Left", type=int, default=n_substeps_default)
+parser.add_argument("-nr", "--n-substeps-right", help="Number of substeps in one window for Mass-Right", type=int, default=n_substeps_default)
 
 try:
     args = parser.parse_args()
@@ -29,9 +35,20 @@ except SystemExit:
 
 participant_name = args.participantName
 
+write_data_names = []
+read_data_names = []
 if participant_name == ParticipantNames.MASS_LEFT.value:
-    write_data_names = [DataNames.FORCE_LEFT_1.value, DataNames.FORCE_LEFT_2.value]  # sends results for each of the two substeps
-    read_data_names = [DataNames.FORCE_RIGHT_1.value, DataNames.FORCE_RIGHT_2.value]  # receives results from two time steps of right mass
+    n_substeps_this = args.n_substeps_left
+    n_substeps_other = args.n_substeps_right
+
+    time_stepping = args.time_stepping_left
+
+    for i in range(n_substeps_this):
+        write_data_names.append(f"{DataNames.FORCE_LEFT.value}-{i+1}")
+
+    for i in range(n_substeps_other):
+        read_data_names.append(f"{DataNames.FORCE_RIGHT.value}-{i+1}")
+
     mesh_name = MeshNames.MASS_LEFT_MESH.value
 
     mass = oscillator.MassLeft.m
@@ -41,8 +58,17 @@ if participant_name == ParticipantNames.MASS_LEFT.value:
     v_analytical = oscillator.MassLeft.v_analytical
 
 elif participant_name == ParticipantNames.MASS_RIGHT.value:
-    read_data_names = [DataNames.FORCE_LEFT_1.value, DataNames.FORCE_LEFT_2.value]  # receives results from two time steps of left mass
-    write_data_names = [DataNames.FORCE_RIGHT_1.value, DataNames.FORCE_RIGHT_2.value]  # sends results for each of the two substeps
+    n_substeps_this = args.n_substeps_right
+    n_substeps_other = args.n_substeps_left
+
+    time_stepping = args.time_stepping_right
+
+    for i in range(n_substeps_this):
+        write_data_names.append(f"{DataNames.FORCE_RIGHT.value}-{i+1}")
+
+    for i in range(n_substeps_other):
+        read_data_names.append(f"{DataNames.FORCE_LEFT.value}-{i+1}")
+
     mesh_name = MeshNames.MASS_RIGHT_MESH.value
 
     mass = oscillator.MassRight.m
@@ -59,30 +85,31 @@ num_vertices = 1  # Number of vertices
 solver_process_index = 0
 solver_process_size = 1
 
-if args.time_stepping == TimeSteppingSchemes.GENERALIZED_ALPHA.value:
+if time_stepping == TimeSteppingSchemes.GENERALIZED_ALPHA.value:
     time_stepper = GeneralizedAlpha(stiffness=stiffness, mass=mass, alpha_f=0.4, alpha_m=0.2)
-elif args.time_stepping == TimeSteppingSchemes.NEWMARK_BETA.value:
+elif time_stepping == TimeSteppingSchemes.NEWMARK_BETA.value:
     time_stepper = GeneralizedAlpha(stiffness=stiffness, mass=mass, alpha_f=0.0, alpha_m=0.0)
-elif args.time_stepping == TimeSteppingSchemes.RUNGE_KUTTA_4.value:
+elif time_stepping == TimeSteppingSchemes.RUNGE_KUTTA_4.value:
     ode_system = np.array([
         [0,          mass], # du
         [-stiffness, 0   ], # dv
     ])
     time_stepper = RungeKutta4(ode_system=ode_system)
 else:
-    raise Exception(f"Invalid time stepping scheme {args.time_stepping}. Please use one of {[ts.value for ts in TimeSteppingSchemes]}")
+    raise Exception(f"Invalid time stepping scheme {time_stepping}. Please use one of {[ts.value for ts in TimeSteppingSchemes]}")
 
-print(f"time stepping scheme being used: {args.time_stepping}")
+print(f"time stepping scheme being used: {time_stepping}")
 print(f"participant: {participant_name}")
 print()
 print("configured_precice_dt, my_dt, error")
 
-dts = [0.04, 0.02, 0.01, 0.005, 0.0025]
+dts = [0.2, 0.1, 0.05, 0.025, 0.0125]
+# dts = [0.04, 0.02, 0.01, 0.005, 0.0025]
 
-if args.interpolation_scheme == ReadWaveformSchemes.LAGRANGE_LINEAR.value:
-    interpolation_scheme = ReadWaveformSchemes.LAGRANGE_LINEAR.value
-elif args.interpolation_scheme == ReadWaveformSchemes.LAGRANGE_QUADRATIC.value:
-    interpolation_scheme = ReadWaveformSchemes.LAGRANGE_QUADRATIC.value
+if args.interpolation_scheme == ReadWaveformSchemes.LAGRANGE.value:
+    interpolation_scheme = ReadWaveformSchemes.LAGRANGE.value
+elif args.interpolation_scheme == ReadWaveformSchemes.BSPLINE.value:
+    interpolation_scheme = ReadWaveformSchemes.BSPLINE.value
 else:
     raise Exception(f"wrong interpolation scheme name: {args.interpolation_scheme}. Please use one of {[p.value for p in ReadWaveformSchemes]}.")
 
@@ -91,15 +118,13 @@ my_dts = []
 
 for dt in dts:
 
-    if args.multirate == MultirateMode.TWO_SUBSTEPS.value:
-        configured_precice_dt = dt
-        my_dt = dt/2
-    else:
-        raise Exception(f"wrong multirate mode: {args.multirate}. Please use one of {[m.value for m in MultirateMode]}.")
+    configured_precice_dt = dt
+    my_dt = dt/n_substeps_this
+    other_dt = dt/n_substeps_other
 
-    if interpolation_scheme == ReadWaveformSchemes.LAGRANGE_QUADRATIC.value:
-      configuration_file_name = f"lagrange_2_configs/precice-config-{configured_precice_dt}.xml"
+    render(dt, args.n_substeps_left, args.n_substeps_right)
 
+    configuration_file_name = f"substeps_configs/precice-config.xml"
 
     interface = precice.Interface(participant_name, configuration_file_name,
                                 solver_process_index, solver_process_size)
@@ -164,31 +189,30 @@ for dt in dts:
             times += t_write
 
         t_start = t_cp  # time at beginning of the window
-        t_end = t_start + configured_precice_dt  # time at end of the window
 
-        f_mid = interface.read_scalar_data(read_data_ids[0], vertex_id)
-        t_mid = (t_start + t_end) * 0.5
+        fs = (n_substeps_other+1) * [None]
+        fs[0] = f_start
 
-        f_end = interface.read_scalar_data(read_data_ids[1], vertex_id)
+        for i in range(n_substeps_other):
+            fs[i+1] = interface.read_scalar_data(read_data_ids[i], vertex_id)
 
-        ts = [t_start, t_mid, t_end]
-        fs = [f_start, f_mid, f_end]
+        f_end = fs[-1]
+
+        ts = [t_start + i*other_dt for i in range(n_substeps_other+1)]
 
         # do time stepping
         t_f = time_stepper.rhs_eval_points(dt)
 
         f = len(t_f)*[None]
         for i in range(len(f)):
-            '''Lagrange Interpolation
-            f[i] = do_lagrange_interpolation(t + t_f[i], ts, fs)
-            '''
-
-            '''scipy Bspline
-            '''
-            from scipy.interpolate import splrep, splev
-            tck = splrep(ts, fs, k=2)
-            interpolant = lambda t: splev(t, tck)
-            f[i] = interpolant(t + t_f[i])
+            if interpolation_scheme == ReadWaveformSchemes.LAGRANGE.value:
+                f[i] = do_lagrange_interpolation(t + t_f[i], ts, fs)
+            elif interpolation_scheme == ReadWaveformSchemes.BSPLINE.value:
+                from scipy.interpolate import splrep, splev
+                b_spline_order = args.interpolation_order
+                tck = splrep(ts, fs, k=b_spline_order)
+                interpolant = lambda t: splev(t, tck)
+                f[i] = interpolant(t + t_f[i])
 
         u_new, v_new, a_new = time_stepper.do_step(u, v, a, f, dt)
 
@@ -196,7 +220,7 @@ for dt in dts:
 
         write_buffer[write_data_ids[substep]] = write_data
 
-        if dt == precice_dt:  # this time step concludes window. Write data
+        if substep+1 == n_substeps_this:  # this time step concludes window. Write data
             for id, data in write_buffer.items():
                 interface.write_scalar_data(id, vertex_id, data)
 
@@ -248,8 +272,16 @@ df.index.name = "dt"
 df["my_dt"] = my_dts
 df["error"] = errors
 
-time_stepping_scheme = args.time_stepping
-filepath = this_file.parent / f"{Cases.MULTIRATE.value}_{participant_name}_{time_stepping_scheme}_{interpolation_scheme}_{args.multirate}.csv"
+filepath = this_file.parent / f"{Cases.MULTIRATE.value}_{participant_name}_{args.time_stepping_left}_{args.time_stepping_right}_{interpolation_scheme}_{args.interpolation_order}_{MultirateMode.SUBSTEPS.value}_{args.n_substeps_left}_{args.n_substeps_right}.csv"
 df.to_csv(filepath)
 
-add_metainfo(this_file, filepath, time_stepping_scheme, precice.__version__, interpolation_scheme)
+add_metainfo(runner_file=this_file,
+             csv_file=filepath,
+             time_stepping_scheme_left=args.time_stepping_left,
+             time_stepping_scheme_right=args.time_stepping_right,
+             precice_version=precice.__version__,
+             read_waveform_scheme=interpolation_scheme,
+             read_waveform_order=args.interpolation_order,
+             multirate_mode=MultirateMode.SUBSTEPS.value,
+             n_substeps_left=args.n_substeps_left,
+             n_substeps_right=args.n_substeps_right)
