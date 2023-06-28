@@ -22,7 +22,7 @@ parser.add_argument("participantName", help="Name of the solver.", type=str)
 parser.add_argument("-tsl", "--time-stepping-left", help="Time stepping scheme being used for Mass-Left.", type=str, default=TimeSteppingSchemes.NEWMARK_BETA.value)
 parser.add_argument("-tsr", "--time-stepping-right", help="Time stepping scheme being used for Mass-Right.", type=str, default=TimeSteppingSchemes.NEWMARK_BETA.value)
 parser.add_argument("-is", "--interpolation-scheme", help="Interpolation scheme being used.", type=str, default=ReadWaveformSchemes.LAGRANGE.value)
-parser.add_argument("-io", "--interpolation-order", help="Desired order of interpolation scheme.", type=int, default=1)
+parser.add_argument("-p", "--interpolation-degree", help="Desired degree of interpolation scheme.", type=int, default=1)
 parser.add_argument("-nl", "--n-substeps-left", help="Number of substeps in one window for Mass-Left", type=int, default=n_substeps_default)
 parser.add_argument("-nr", "--n-substeps-right", help="Number of substeps in one window for Mass-Right", type=int, default=n_substeps_default)
 
@@ -104,7 +104,6 @@ print()
 print("configured_precice_dt, my_dt, error")
 
 dts = [0.2, 0.1, 0.05, 0.025, 0.0125]
-# dts = [0.04, 0.02, 0.01, 0.005, 0.0025]
 
 if args.interpolation_scheme == ReadWaveformSchemes.LAGRANGE.value:
     interpolation_scheme = ReadWaveformSchemes.LAGRANGE.value
@@ -209,7 +208,7 @@ for dt in dts:
                 f[i] = do_lagrange_interpolation(t + t_f[i], ts, fs)
             elif interpolation_scheme == ReadWaveformSchemes.BSPLINE.value:
                 from scipy.interpolate import splrep, splev
-                b_spline_order = args.interpolation_order
+                b_spline_order = args.interpolation_degree
                 tck = splrep(ts, fs, k=b_spline_order)
                 interpolant = lambda t: splev(t, tck)
                 f[i] = interpolant(t + t_f[i])
@@ -272,7 +271,8 @@ df.index.name = "dt"
 df["my_dt"] = my_dts
 df["error"] = errors
 
-filepath = this_file.parent / f"{Cases.MULTIRATE.value}_{participant_name}_{args.time_stepping_left}_{args.time_stepping_right}_{interpolation_scheme}_{args.interpolation_order}_{MultirateMode.SUBSTEPS.value}_{args.n_substeps_left}_{args.n_substeps_right}.csv"
+filepath = this_file.parent / f"{Cases.MULTIRATE.value}_{participant_name}_{args.time_stepping_left}_{args.time_stepping_right}_{interpolation_scheme}_{args.interpolation_degree}_{MultirateMode.SUBSTEPS.value}_{args.n_substeps_left}_{args.n_substeps_right}.csv"
+
 df.to_csv(filepath)
 
 add_metainfo(runner_file=this_file,
@@ -281,7 +281,7 @@ add_metainfo(runner_file=this_file,
              time_stepping_scheme_right=args.time_stepping_right,
              precice_version=precice.__version__,
              read_waveform_scheme=interpolation_scheme,
-             read_waveform_order=args.interpolation_order,
+             read_waveform_order=args.interpolation_degree,
              multirate_mode=MultirateMode.SUBSTEPS.value,
              n_substeps_left=args.n_substeps_left,
              n_substeps_right=args.n_substeps_right)

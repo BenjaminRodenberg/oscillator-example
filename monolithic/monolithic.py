@@ -28,7 +28,7 @@ a0 = -K.dot(M_inv.dot(u0))
 analytical_1 = oscillator.MassLeft.u_analytical
 analytical_2 = oscillator.MassRight.u_analytical
 
-dts = [0.04, 0.02, 0.01, 0.005, 0.0025, 0.00125, 0.000625]
+dts = [0.1, 0.04, 0.02, 0.01, 0.005, 0.0025, 0.00125, 0.000625]
 T = 1
 
 # Generalized Alpha Parameters

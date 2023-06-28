@@ -21,10 +21,10 @@ class ReadWaveformSchemes(Enum):
     LAGRANGE_QUADRATIC = "Lagrange_quadratic"  # Lagrange interpolation, second order
     HERMITE_CUBIC = "Hermite_cubic"  # Hermite interpolation, third order
     HERMITE = "Hermite"
-    BSPLINE = "BSpline"
-    BSPLINE_LINEAR = "BSpline_linear"  # Linear BSplines
-    BSPLINE_CUBIC = "BSpline_cubic"  # Cubic BSplines
-    BSPLINE_TEN = "BSpline_ten"  # tenth order BSplines
+    BSPLINE = "B_spline"
+    BSPLINE_LINEAR = "B_spline_linear"  # Linear B-splines
+    BSPLINE_CUBIC = "B_spline_cubic"  # Cubic B-splines
+    BSPLINE_TEN = "B_spline_ten"  # tenth order B-splines
 
 class MultirateMode(Enum):
     NONE = "None"  # Don't use any multirate
