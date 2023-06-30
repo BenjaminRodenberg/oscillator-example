@@ -132,7 +132,6 @@ for dt in dts:
     u = u0
     v = v0
     a = a0
-    f_start = f_end = f0
     t = 0
 
     positions = []
@@ -149,7 +148,6 @@ for dt in dts:
             v_cp = v
             a_cp = a
             t_cp = t
-            f_start = f_end  # force at the beginning of the window
 
             # store data for plotting and postprocessing
             positions += u_write
