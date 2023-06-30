@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import precice
 import pathlib
+from configs.create_config import render
 
 from brot.enums import Cases, TimeSteppingSchemes, ReadWaveformSchemes, MultirateMode, ParticipantNames, DataNames, MeshNames
 from brot.output import add_metainfo
@@ -13,11 +14,16 @@ import brot.oscillator as oscillator
 
 this_file = pathlib.Path(__file__)
 
+n_substeps_default = 1
+
 parser = argparse.ArgumentParser()
 parser.add_argument("participantName", help="Name of the solver.", type=str)
-parser.add_argument("-ts", "--time-stepping", help="Time stepping scheme being used.", type=str, default=TimeSteppingSchemes.NEWMARK_BETA.value)
+parser.add_argument("-tsl", "--time-stepping-left", help="Time stepping scheme being used for Mass-Left.", type=str, default=TimeSteppingSchemes.NEWMARK_BETA.value)
+parser.add_argument("-tsr", "--time-stepping-right", help="Time stepping scheme being used for Mass-Right.", type=str, default=TimeSteppingSchemes.NEWMARK_BETA.value)
 parser.add_argument("-is", "--interpolation-scheme", help="Interpolation scheme being used.", type=str, default=ReadWaveformSchemes.ZERO.value)
-parser.add_argument("-mr", "--multirate", help="Pick one of 3 modes for multirate", type=str, default=MultirateMode.NONE.value)
+parser.add_argument("-p", "--interpolation-degree", help="Desired degree of interpolation scheme.", type=int, default=1)
+parser.add_argument("-nl", "--n-substeps-left", help="Number of substeps in one window for Mass-Left", type=int, default=n_substeps_default)
+parser.add_argument("-nr", "--n-substeps-right", help="Number of substeps in one window for Mass-Right", type=int, default=n_substeps_default)
 
 try:
     args = parser.parse_args()
@@ -29,6 +35,11 @@ except SystemExit:
 participant_name = args.participantName
 
 if participant_name == ParticipantNames.MASS_LEFT.value:
+    n_substeps_this = args.n_substeps_left
+    n_substeps_other = args.n_substeps_right
+
+    time_stepping = args.time_stepping_left
+
     write_data_name = DataNames.FORCE_LEFT.value
     read_data_name = DataNames.FORCE_RIGHT.value
     mesh_name = MeshNames.MASS_LEFT_MESH.value
@@ -40,6 +51,11 @@ if participant_name == ParticipantNames.MASS_LEFT.value:
     v_analytical = oscillator.MassLeft.v_analytical
 
 elif participant_name == ParticipantNames.MASS_RIGHT.value:
+    n_substeps_this = args.n_substeps_right
+    n_substeps_other = args.n_substeps_left
+
+    time_stepping = args.time_stepping_right
+
     read_data_name = DataNames.FORCE_LEFT.value
     write_data_name = DataNames.FORCE_RIGHT.value
     mesh_name = MeshNames.MASS_RIGHT_MESH.value
@@ -58,73 +74,40 @@ num_vertices = 1  # Number of vertices
 solver_process_index = 0
 solver_process_size = 1
 
-if args.time_stepping == TimeSteppingSchemes.GENERALIZED_ALPHA.value:
+if time_stepping == TimeSteppingSchemes.GENERALIZED_ALPHA.value:
     time_stepper = GeneralizedAlpha(stiffness=stiffness, mass=mass, alpha_f=0.4, alpha_m=0.2)
-elif args.time_stepping == TimeSteppingSchemes.NEWMARK_BETA.value:
+elif time_stepping == TimeSteppingSchemes.NEWMARK_BETA.value:
     time_stepper = GeneralizedAlpha(stiffness=stiffness, mass=mass, alpha_f=0.0, alpha_m=0.0)
-elif args.time_stepping == TimeSteppingSchemes.RUNGE_KUTTA_4.value:
+elif time_stepping == TimeSteppingSchemes.RUNGE_KUTTA_4.value:
     ode_system = np.array([
         [0,          mass], # du
         [-stiffness, 0   ], # dv
     ])
     time_stepper = RungeKutta4(ode_system=ode_system)
 else:
-    raise Exception(f"Invalid time stepping scheme {args.time_stepping}. Please use one of {[ts.value for ts in TimeSteppingSchemes]}")
+    raise Exception(f"Invalid time stepping scheme {time_stepping}. Please use one of {[ts.value for ts in TimeSteppingSchemes]}")
 
-print(f"time stepping scheme being used: {args.time_stepping}")
+print(f"time stepping scheme being used: {time_stepping}")
 print(f"participant: {participant_name}")
 print()
 print("configured_precice_dt, my_dt, error")
 
-dts = [0.04, 0.02, 0.01, 0.005, 0.0025]
-
-if args.interpolation_scheme == ReadWaveformSchemes.ZERO.value:
-    interpolation_scheme = ReadWaveformSchemes.ZERO.value
-elif args.interpolation_scheme == ReadWaveformSchemes.BSPLINE_LINEAR.value:
-    interpolation_scheme = ReadWaveformSchemes.BSPLINE_LINEAR.value
-elif args.interpolation_scheme == ReadWaveformSchemes.BSPLINE_CUBIC.value:
-    interpolation_scheme = ReadWaveformSchemes.BSPLINE_CUBIC.value
-elif args.interpolation_scheme == ReadWaveformSchemes.BSPLINE_TEN.value:
-    interpolation_scheme = ReadWaveformSchemes.BSPLINE_TEN.value
-else:
-    raise Exception(f"wrong interpolation scheme name: {args.interpolation_scheme}. Please use one of {[p.value for p in ReadWaveformSchemes]}.")
+dts = [0.2, 0.1, 0.05, 0.025, 0.0125]
 
 errors = []
 my_dts = []
 
 for dt in dts:
-    if args.multirate == MultirateMode.NONE.value:
-        # use same dt for both solvers and preCICE
-        my_dt = dt
-        configured_precice_dt = dt
-    elif args.multirate == MultirateMode.SUBCYCLING.value:
-        # use fixed dt for preCICE
-        configured_precice_dt = np.max(dts)
-        my_dt = dt / 4
-    elif args.multirate == MultirateMode.FOUR_SUBSTEPS.value:
-        configured_precice_dt = dt
-        # always use four substeps
-        my_dt = dt / 4
-    elif args.multirate == MultirateMode.MULTIRATE.value:
-        # use fixed dt for preCICE
-        configured_precice_dt = 0.04
-        if participant_name == ParticipantNames.MASS_LEFT.value:
-            # use fixed dt for left participant
-            my_dt = 0.01
-        elif participant_name == ParticipantNames.MASS_RIGHT.value:
-            my_dt = dt
-    else:
-        raise Exception(f"wrong multirate mode: {args.multirate}. Please use one of {[m.value for m in MultirateMode]}.")
 
+    configured_precice_dt = dt
+    my_dt = dt/n_substeps_this
+    other_dt = dt/n_substeps_other
 
-    if args.interpolation_scheme == ReadWaveformSchemes.ZERO.value:
-        configuration_file_name = f"configs/precice-config-{configured_precice_dt}.xml"
-    elif args.interpolation_scheme == ReadWaveformSchemes.BSPLINE_LINEAR.value:
-        configuration_file_name = f"configs_waveform-order_1/precice-config-{configured_precice_dt}.xml"
-    elif args.interpolation_scheme == ReadWaveformSchemes.BSPLINE_CUBIC.value:
-        configuration_file_name = f"configs_waveform-order_3/precice-config-{configured_precice_dt}.xml"
-    elif args.interpolation_scheme == ReadWaveformSchemes.BSPLINE_TEN.value:
-        configuration_file_name = f"configs_waveform-order_10/precice-config-{configured_precice_dt}.xml"
+    waveform_order = args.interpolation_degree
+
+    render(configured_precice_dt, waveform_order)
+
+    configuration_file_name = f"configs/precice-config.xml"
 
     participant = precice.Participant(participant_name, configuration_file_name, solver_process_index, solver_process_size)
 
@@ -231,8 +214,19 @@ df.index.name = "dt"
 df["my_dt"] = my_dts
 df["error"] = errors
 
-time_stepping_scheme = args.time_stepping
-filepath = this_file.parent / f"{Cases.PRECICE3.value}_{participant_name}_{time_stepping_scheme}_{interpolation_scheme}_{args.multirate}.csv"
+interpolation_scheme = ReadWaveformSchemes.BSPLINE
+
+filepath = this_file.parent / f"{Cases.PRECICE3.value}_{participant_name}_{args.time_stepping_left}_{args.time_stepping_right}_{interpolation_scheme}_{args.interpolation_degree}_{MultirateMode.SUBSTEPS.value}_{args.n_substeps_left}_{args.n_substeps_right}.csv"
+
 df.to_csv(filepath)
 
-add_metainfo(this_file, filepath, time_stepping_scheme, precice.__version__, interpolation_scheme)
+add_metainfo(runner_file=this_file,
+             csv_file=filepath,
+             time_stepping_scheme_left=args.time_stepping_left,
+             time_stepping_scheme_right=args.time_stepping_right,
+             precice_version=precice.__version__,
+             read_waveform_scheme=interpolation_scheme,
+             read_waveform_order=args.interpolation_degree,
+             multirate_mode=MultirateMode.SUBSTEPS.value,
+             n_substeps_left=args.n_substeps_left,
+             n_substeps_right=args.n_substeps_right)
