@@ -42,10 +42,10 @@
     <time-window-size value="{{time_window_size}}" />
     <max-iterations value="2000" />
     <min-iteration-convergence-measure min-iterations="1" data="Force-Left" mesh="Mass-Left-Mesh"/>
-    <relative-convergence-measure data="Force-Left" mesh="Mass-Left-Mesh" limit="1e-10"/>
-    <relative-convergence-measure data="Force-Right" mesh="Mass-Left-Mesh" limit="1e-10"/>
-    <exchange data="Force-Left" mesh="Mass-Left-Mesh" from="Mass-Left" to="Mass-Right" initialize="true"/>
-    <exchange data="Force-Right" mesh="Mass-Left-Mesh" from="Mass-Right" to="Mass-Left" initialize="true"/>
+    <relative-convergence-measure data="Force-Left" mesh="Mass-Left-Mesh" limit="{{convergence_limit}}"/>
+    <relative-convergence-measure data="Force-Right" mesh="Mass-Left-Mesh" limit="{{convergence_limit}}"/>
+    <exchange data="Force-Left" mesh="Mass-Left-Mesh" from="Mass-Left" to="Mass-Right" initialize="true" substeps="{{substeps}}" />
+    <exchange data="Force-Right" mesh="Mass-Left-Mesh" from="Mass-Right" to="Mass-Left" initialize="true" substeps="{{substeps}}" />
   </coupling-scheme:parallel-implicit>
 
 </precice-configuration>

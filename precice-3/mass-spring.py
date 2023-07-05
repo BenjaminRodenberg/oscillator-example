@@ -7,21 +7,25 @@ import precice
 import pathlib
 from configs.create_config import render
 
-from brot.enums import Cases, TimeSteppingSchemes, ReadWaveformSchemes, MultirateMode, ParticipantNames, DataNames, MeshNames
+from brot.enums import Cases, TimeSteppingSchemes, ReadWaveformSchemes, MultirateMode, ParticipantNames, DataNames, MeshNames, AccelerationSchemes
 from brot.output import add_metainfo
 from brot.timesteppers import GeneralizedAlpha, RungeKutta4
 import brot.oscillator as oscillator
 
 this_file = pathlib.Path(__file__)
 
-n_substeps_default = 1
+degree_default = 3
+n_substeps_default = 4
+substeps_default = True
 
 parser = argparse.ArgumentParser()
 parser.add_argument("participantName", help="Name of the solver.", type=str)
-parser.add_argument("-tsl", "--time-stepping-left", help="Time stepping scheme being used for Mass-Left.", type=str, default=TimeSteppingSchemes.NEWMARK_BETA.value)
-parser.add_argument("-tsr", "--time-stepping-right", help="Time stepping scheme being used for Mass-Right.", type=str, default=TimeSteppingSchemes.NEWMARK_BETA.value)
+parser.add_argument("-tsl", "--time-stepping-left", help="Time stepping scheme being used for Mass-Left.", type=str, default=TimeSteppingSchemes.RUNGE_KUTTA_4.value)
+parser.add_argument("-tsr", "--time-stepping-right", help="Time stepping scheme being used for Mass-Right.", type=str, default=TimeSteppingSchemes.RUNGE_KUTTA_4.value)
+parser.add_argument("-acc", "--acceleration-scheme", help="Acceleration scheme being used", type=str, default=AccelerationSchemes.NONE.value)
 parser.add_argument("-is", "--interpolation-scheme", help="Interpolation scheme being used.", type=str, default=ReadWaveformSchemes.ZERO.value)
-parser.add_argument("-p", "--interpolation-degree", help="Desired degree of interpolation scheme.", type=int, default=1)
+parser.add_argument("-p", "--interpolation-degree", help="Desired degree of interpolation scheme.", type=int, default=degree_default)
+parser.add_argument("-s", "--no-substeps", help="Set substeps=\"false\" precice-config.", action='store_const', dest="substeps", default=substeps_default, const=not(substeps_default))
 parser.add_argument("-nl", "--n-substeps-left", help="Number of substeps in one window for Mass-Left", type=int, default=n_substeps_default)
 parser.add_argument("-nr", "--n-substeps-right", help="Number of substeps in one window for Mass-Right", type=int, default=n_substeps_default)
 
@@ -90,12 +94,13 @@ else:
 print(f"time stepping scheme being used: {time_stepping}")
 print(f"participant: {participant_name}")
 print()
-print("configured_precice_dt, my_dt, error")
+print("configured_precice_dt, my_dt, error, avg iterations per window")
 
 dts = [0.2, 0.1, 0.05, 0.025, 0.0125]
 
 errors = []
 my_dts = []
+avg_iterations = []
 
 for dt in dts:
 
@@ -105,7 +110,7 @@ for dt in dts:
 
     waveform_order = args.interpolation_degree
 
-    render(configured_precice_dt, waveform_order)
+    render(configured_precice_dt, waveform_order, args.substeps, args.acceleration_scheme)
 
     configuration_file_name = f"configs/precice-config.xml"
 
@@ -137,10 +142,13 @@ for dt in dts:
     positions = []
     velocities = []
     times = []
+    n_iterations = []
 
     u_write = [u]
     v_write = [v]
     t_write = [t]
+
+    iterations = 0
 
     while participant.is_coupling_ongoing():
         if participant.requires_writing_checkpoint():
@@ -153,6 +161,11 @@ for dt in dts:
             positions += u_write
             velocities += v_write
             times += t_write
+
+            if iterations > 0:  # don't write data, when writing checkpoint at beginning of first window
+                n_iterations.append(iterations)
+
+            iterations = 1
 
         t_f = time_stepper.rhs_eval_points(dt)
         f = len(t_f)*[None]
@@ -182,6 +195,7 @@ for dt in dts:
             u_write = []
             v_write = []
             t_write = []
+            iterations += 1
 
         else:
             u = u_new
@@ -205,14 +219,19 @@ for dt in dts:
     error = np.max(abs(u_analytical(np.array(times))-np.array(positions)))
     errors.append(error)
     my_dts.append(my_dt)
-    print(f"{configured_precice_dt}, {my_dt}, {error}")
+    avg = np.average(n_iterations)
+    avg_iterations.append(avg)
+    print(f"{configured_precice_dt}, {my_dt}, {error}, {avg}")
 
 df = pd.DataFrame(index=dts)
 df.index.name = "dt"
 df["my_dt"] = my_dts
 df["error"] = errors
+df["iterations_avg"] = avg_iterations
 
 interpolation_scheme = ReadWaveformSchemes.BSPLINE
+
+# TODO: Also add acceleration scheme in metadata!
 
 filepath = this_file.parent / f"{Cases.PRECICE3.value}_{participant_name}_{args.time_stepping_left}_{args.time_stepping_right}_{interpolation_scheme}_{args.interpolation_degree}_{MultirateMode.SUBSTEPS.value}_{args.n_substeps_left}_{args.n_substeps_right}.csv"
 

@@ -1,9 +1,10 @@
 from jinja2 import Environment, select_autoescape, FileSystemLoader
 import os
 from pathlib import Path
+from brot.enums import AccelerationSchemes
 
 
-def render(dt, waveform_order):
+def render(dt, waveform_order, substeps, acceleration_scheme):
     base_path = Path(__file__).parent.absolute()
 
     env = Environment(
@@ -11,12 +12,24 @@ def render(dt, waveform_order):
         autoescape=select_autoescape(['xml'])
     )
 
-    precice_config_template = env.get_template('precice-config-template.xml')
+    if acceleration_scheme == AccelerationSchemes.NONE.value:
+        precice_config_template = env.get_template('precice-config-template-NoAcceleration.xml')
+    elif acceleration_scheme == AccelerationSchemes.CONSTANT.value:
+        precice_config_template = env.get_template('precice-config-template-UR.xml')
+    elif acceleration_scheme == AccelerationSchemes.REDUCED_QUASI_NEWTON.value:
+        precice_config_template = env.get_template('precice-config-template-rQN.xml')
+    elif acceleration_scheme == AccelerationSchemes.FULL_QUASI_NEWTON.value:
+        precice_config_template = env.get_template('precice-config-template-QN.xml')
+    else:
+        raise Exception(f"Unknown acceleration_scheme {acceleration_scheme}")
+
     precice_config_name = base_path / "precice-config.xml"
 
     with open(os.path.join( ".", precice_config_name), "w") as file:
         file.write(precice_config_template.render(time_window_size=dt,
-                                                  waveform_order=waveform_order))
+                                                  waveform_order=waveform_order,
+                                                  substeps=substeps,
+                                                  convergence_limit=10e-6))
 
 if __name__ == "__main__":
-    render(dt=0.01, waveform_order=1)
+    render(dt=0.01, waveform_order=1, substeps=False, acceleration_scheme=AccelerationSchemes.CONSTANT.value)
