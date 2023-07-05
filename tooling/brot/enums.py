@@ -5,6 +5,7 @@ class Cases(Enum):
     PRECICE2 = "precice2"
     WAVEFORM = "waveform"
     MULTIRATE = "multirate"
+    ACCELERATION = "acceleration"
     PRECICE3 = "precice3"
 
 
@@ -53,3 +54,9 @@ class DataNames(Enum):
 class MeshNames(Enum):
     MASS_LEFT_MESH = "Mass-Left-Mesh"
     MASS_RIGHT_MESH = "Mass-Right-Mesh"
+
+class AccelerationSchemes(Enum):
+    NONE = "None"
+    CONSTANT = "Constant"
+    REDUCED_QUASI_NEWTON = "rQN"
+    FULL_QUASI_NEWTON = "QN"

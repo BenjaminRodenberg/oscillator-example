@@ -2,23 +2,29 @@ from __future__ import division
 
 import argparse
 import numpy as np
-from numpy.linalg import eig
+import pandas as pd
 import precice
 import pathlib
+from configs.create_config import render
 
-from brot.enums import Cases, TimeSteppingSchemes, ParticipantNames, DataNames, MeshNames
+from brot.enums import Cases, TimeSteppingSchemes, ReadWaveformSchemes, MultirateMode, ParticipantNames, DataNames, MeshNames, AccelerationSchemes
 from brot.output import add_metainfo
-from brot.interpolation import do_lagrange_interpolation
-from brot.timesteppers import GeneralizedAlpha
+from brot.timesteppers import GeneralizedAlpha, RungeKutta4
 import brot.oscillator as oscillator
 
 this_file = pathlib.Path(__file__)
 
+degree_default = 3
+n_substeps_default = 4
+
 parser = argparse.ArgumentParser()
 parser.add_argument("participantName", help="Name of the solver.", type=str)
-parser.add_argument("preciceConfig", nargs="?", help="precice-config.xml to be used.", type=pathlib.Path, default=this_file.parent / "configs" / "precice-config-0.04-QN.xml")
-parser.add_argument("-ts", "--time-stepping", help="Time stepping scheme being used.", type=str, default=TimeSteppingSchemes.NEWMARK_BETA.value)
-
+parser.add_argument("-tsl", "--time-stepping-left", help="Time stepping scheme being used for Mass-Left.", type=str, default=TimeSteppingSchemes.RUNGE_KUTTA_4.value)
+parser.add_argument("-tsr", "--time-stepping-right", help="Time stepping scheme being used for Mass-Right.", type=str, default=TimeSteppingSchemes.RUNGE_KUTTA_4.value)
+parser.add_argument("-acc", "--acceleration-scheme", help="Acceleration scheme being used", type=str, default=AccelerationSchemes.NONE.value)
+parser.add_argument("-p", "--interpolation-degree", help="Desired degree of interpolation scheme.", type=int, default=degree_default)
+parser.add_argument("-nl", "--n-substeps-left", help="Number of substeps in one window for Mass-Left", type=int, default=n_substeps_default)
+parser.add_argument("-nr", "--n-substeps-right", help="Number of substeps in one window for Mass-Right", type=int, default=n_substeps_default)
 
 try:
     args = parser.parse_args()
@@ -29,13 +35,20 @@ except SystemExit:
 
 participant_name = args.participantName
 
-window_dt = 0.04
+write_data_names = []
+read_data_names = []
+if participant_name == ParticipantNames.MASS_LEFT.value:
+    n_substeps_this = args.n_substeps_left
+    n_substeps_other = args.n_substeps_right
 
-if participant_name == ParticipantNames.MASS_LEFT.value:  # left mass uses large time step size == window size
-    my_dt = window_dt
+    time_stepping = args.time_stepping_left
 
-    write_data_names = [DataNames.FORCE_LEFT.value]  # write data at end of single time step
-    read_data_names = [DataNames.FORCE_RIGHT_1.value, DataNames.FORCE_RIGHT_2.value]  # receives results from two time steps of right mass
+    for i in range(n_substeps_this):
+        write_data_names.append(f"{DataNames.FORCE_LEFT.value}-{i+1}")
+
+    for i in range(n_substeps_other):
+        read_data_names.append(f"{DataNames.FORCE_RIGHT.value}-{i+1}")
+
     mesh_name = MeshNames.MASS_LEFT_MESH.value
 
     mass = oscillator.MassLeft.m
@@ -44,11 +57,18 @@ if participant_name == ParticipantNames.MASS_LEFT.value:  # left mass uses large
     u_analytical = oscillator.MassLeft.u_analytical
     v_analytical = oscillator.MassLeft.v_analytical
 
-elif participant_name == ParticipantNames.MASS_RIGHT.value:  # right mass uses small time step size == 0.5 * window size
-    my_dt = window_dt * 0.5
+elif participant_name == ParticipantNames.MASS_RIGHT.value:
+    n_substeps_this = args.n_substeps_right
+    n_substeps_other = args.n_substeps_left
 
-    read_data_names = [DataNames.FORCE_LEFT.value]  # reads one piece of data corresponding to end of window
-    write_data_names = [DataNames.FORCE_RIGHT_1.value, DataNames.FORCE_RIGHT_2.value]  # sends results for each of the two substeps
+    time_stepping = args.time_stepping_right
+
+    for i in range(n_substeps_this):
+        write_data_names.append(f"{DataNames.FORCE_RIGHT.value}-{i+1}")
+
+    for i in range(n_substeps_other):
+        read_data_names.append(f"{DataNames.FORCE_LEFT.value}-{i+1}")
+
     mesh_name = MeshNames.MASS_RIGHT_MESH.value
 
     mass = oscillator.MassRight.m
@@ -65,142 +85,210 @@ num_vertices = 1  # Number of vertices
 solver_process_index = 0
 solver_process_size = 1
 
-configuration_file_name = str(args.preciceConfig)
-
-interface = precice.Interface(participant_name, configuration_file_name,
-                            solver_process_index, solver_process_size)
-
-mesh_id = interface.get_mesh_id(mesh_name)
-dimensions = interface.get_dimensions()
-
-vertex = np.zeros(dimensions)
-read_data = np.zeros(num_vertices)
-write_data = oscillator.SpringMiddle.k * u0 * np.ones(num_vertices)
-
-vertex_id = interface.set_mesh_vertex(mesh_id, vertex)
-read_data_ids = [interface.get_data_id(read_data_name, mesh_id) for read_data_name in read_data_names]
-write_data_ids = [interface.get_data_id(write_data_name, mesh_id) for write_data_name in write_data_names]
-
-precice_dt = interface.initialize()
-dt = np.min([precice_dt, my_dt])
-
-if interface.is_action_required(precice.action_write_initial_data()):
-    for write_data_id in write_data_ids:
-        interface.write_scalar_data(write_data_id, vertex_id, write_data)
-    interface.mark_action_fulfilled(precice.action_write_initial_data())
-
-interface.initialize_data()
-
-# Initial Conditions
-
-a0 = (f0 - stiffness * u0) / mass
-u = u0
-v = v0
-a = a0
-f_start = f_end = f0
-t = 0
-
-# Generalized Alpha Parameters
-if args.time_stepping == TimeSteppingSchemes.GENERALIZED_ALPHA.value:
+if time_stepping == TimeSteppingSchemes.GENERALIZED_ALPHA.value:
     time_stepper = GeneralizedAlpha(stiffness=stiffness, mass=mass, alpha_f=0.4, alpha_m=0.2)
-elif args.time_stepping == TimeSteppingSchemes.NEWMARK_BETA.value:
+elif time_stepping == TimeSteppingSchemes.NEWMARK_BETA.value:
     time_stepper = GeneralizedAlpha(stiffness=stiffness, mass=mass, alpha_f=0.0, alpha_m=0.0)
-elif args.time_stepping == TimeSteppingSchemes.RUNGE_KUTTA_4.value:
-    raise Exception(f"Please use monolithic_rk4.py for using --time-stepping=\"{args.time_stepping}\"")
+elif time_stepping == TimeSteppingSchemes.RUNGE_KUTTA_4.value:
+    ode_system = np.array([
+        [0,          mass], # du
+        [-stiffness, 0   ], # dv
+    ])
+    time_stepper = RungeKutta4(ode_system=ode_system)
 else:
-    raise Exception(f"Invalid time stepping scheme {args.time_stepping}. Please use one of {[ts.value for ts in TimeSteppingSchemes]}")
+    raise Exception(f"Invalid time stepping scheme {time_stepping}. Please use one of {[ts.value for ts in TimeSteppingSchemes]}")
 
-positions = []
-velocities = []
-times = []
+print(f"time stepping scheme being used: {time_stepping}")
+print(f"participant: {participant_name}")
+print()
+print("configured_precice_dt, my_dt, error, avg iterations per window")
 
-u_write = [u]
-v_write = [v]
-t_write = [t]
+dts = [0.2, 0.1, 0.05, 0.025, 0.0125]
 
-substep = 0
+interpolation_scheme = ReadWaveformSchemes.BSPLINE.value
 
-while interface.is_coupling_ongoing():
-    if interface.is_action_required(precice.action_write_iteration_checkpoint()):
-        u_cp = u
-        v_cp = v
-        a_cp = a
-        t_cp = t
-        f_start = f_end  # force at the beginning of the window
-        substep = 0
-        interface.mark_action_fulfilled(precice.action_write_iteration_checkpoint())
+errors = []
+my_dts = []
+avg_iterations = []
 
-        # store data for plotting and postprocessing
-        positions += u_write
-        velocities += v_write
-        times += t_write
+for dt in dts:
 
-    t_start = t_cp  # time at beginning of the window
-    t_end = t_start + window_dt  # time at end of the window
+    configured_precice_dt = dt
+    my_dt = dt/n_substeps_this
+    other_dt = dt/n_substeps_other
 
-    if participant_name == ParticipantNames.MASS_LEFT.value:  # does single large time step per window
-        f_mid = interface.read_scalar_data(read_data_ids[0], vertex_id)
-        t_mid = (t_start + t_end) * 0.5
-        f_end = interface.read_scalar_data(read_data_ids[1], vertex_id)
-        ts = [t_start, t_mid, t_end]
-        fs = [f_start, f_mid, f_end]
+    render(dt, args.n_substeps_left, args.n_substeps_right, args.acceleration_scheme)
 
-    elif participant_name == ParticipantNames.MASS_RIGHT.value:  # does two small time steps per window
-        f_end = interface.read_scalar_data(read_data_ids[0], vertex_id)  # read data always corresponds to end of window
-        ts = [t_start, t_end]
-        fs = [f_start, f_end]
+    configuration_file_name = f"configs/precice-config.xml"
 
-    # do time stepping
-    t_f = time_stepper.rhs_eval_points(dt)
-    f = do_lagrange_interpolation(t + t_f, ts, fs)
-    u_new, v_new, a_new = time_stepper.do_step(u, v, a, f, dt)
+    interface = precice.Interface(participant_name, configuration_file_name,
+                                solver_process_index, solver_process_size)
 
-    write_data = oscillator.SpringMiddle.k * u_new
+    mesh_id = interface.get_mesh_id(mesh_name)
+    dimensions = interface.get_dimensions()
 
-    if participant_name == ParticipantNames.MASS_LEFT.value:  # does two substeps per window
-        interface.write_scalar_data(write_data_ids[0], vertex_id, write_data)
-    elif participant_name == ParticipantNames.MASS_RIGHT.value:  # does one step per window
-        # TODO: This is wrong! We should only write ALL data before the last advance of the window, otherwise data will be reset for subsequent advance calls.
-        interface.write_scalar_data(write_data_ids[substep], vertex_id, write_data)
+    vertex = np.zeros(dimensions)
+    read_data = np.zeros(num_vertices)
+    write_data = oscillator.SpringMiddle.k * u0 * np.ones(num_vertices)
 
-    precice_dt = interface.advance(dt)
+    vertex_id = interface.set_mesh_vertex(mesh_id, vertex)
+    read_data_ids = [interface.get_data_id(read_data_name, mesh_id) for read_data_name in read_data_names]
+    write_data_ids = [interface.get_data_id(write_data_name, mesh_id) for write_data_name in write_data_names]
+
+    precice_dt = interface.initialize()
     dt = np.min([precice_dt, my_dt])
 
-    if interface.is_action_required(precice.action_read_iteration_checkpoint()):
-        u = u_cp
-        v = v_cp
-        a = a_cp
-        t = t_cp
-        substep = 0
+    if interface.is_action_required(precice.action_write_initial_data()):
+        for write_data_id in write_data_ids:
+            interface.write_scalar_data(write_data_id, vertex_id, write_data)
+        interface.mark_action_fulfilled(precice.action_write_initial_data())
 
-        interface.mark_action_fulfilled(precice.action_read_iteration_checkpoint())
+    interface.initialize_data()
 
-        # empty buffers for next window
-        u_write = []
-        v_write = []
-        t_write = []
+    # Initial Conditions
 
-    else:
-        u = u_new
-        v = v_new
-        a = a_new
-        t += dt
-        substep += 1
+    a0 = (f0 - stiffness * u0) / mass
+    u = u0
+    v = v0
+    a = a0
+    f_start = f_end = f0
+    t = 0
 
-        # write data to buffers
-        u_write.append(u)
-        v_write.append(v)
-        t_write.append(t)
+    positions = []
+    velocities = []
+    times = []
+    n_iterations = []
 
-positions += u_write
-velocities += v_write
-times += t_write
+    u_write = [u]
+    v_write = [v]
+    t_write = [t]
 
-interface.finalize()
+    substep = 0
+    iterations = 0
 
-# print errors
-# analytic solution is only valid for this setup!
-error = np.max(abs(u_analytical(np.array(times))-np.array(positions)))
-print(f"{dt},{error}")
-# todo: write into file!
-# todo: name file in a structured way!
+    write_buffer = {}  # use this dict to buffer write data until final advance of window is called
+
+    while interface.is_coupling_ongoing():
+        if interface.is_action_required(
+                precice.action_write_iteration_checkpoint()):
+            u_cp = u
+            v_cp = v
+            a_cp = a
+            t_cp = t
+            f_start = f_end  # force at the beginning of the window
+            substep = 0
+
+            interface.mark_action_fulfilled(precice.action_write_iteration_checkpoint())
+
+            # store data for plotting and postprocessing
+            positions += u_write
+            velocities += v_write
+            times += t_write
+
+            if iterations > 0:  # don't write data, when writing checkpoint at beginning of first window
+                n_iterations.append(iterations)
+
+            iterations = 1
+
+        t_start = t_cp  # time at beginning of the window
+
+        fs = (n_substeps_other+1) * [None]
+        fs[0] = f_start
+
+        for i in range(n_substeps_other):
+            fs[i+1] = interface.read_scalar_data(read_data_ids[i], vertex_id)
+
+        f_end = fs[-1]
+
+        ts = [t_start + i*other_dt for i in range(n_substeps_other+1)]
+
+        # do time stepping
+        t_f = time_stepper.rhs_eval_points(dt)
+
+        f = len(t_f)*[None]
+        for i in range(len(f)):
+            assert(interpolation_scheme == ReadWaveformSchemes.BSPLINE.value)
+            from scipy.interpolate import splrep, splev
+            b_spline_order = args.interpolation_degree
+            tck = splrep(ts, fs, k=b_spline_order)
+            interpolant = lambda t: splev(t, tck)
+            f[i] = interpolant(t + t_f[i])
+
+        u_new, v_new, a_new = time_stepper.do_step(u, v, a, f, dt)
+
+        write_data = oscillator.SpringMiddle.k * u_new
+
+        write_buffer[write_data_ids[substep]] = write_data
+
+        if substep+1 == n_substeps_this:  # this time step concludes window. Write data
+            for id, data in write_buffer.items():
+                interface.write_scalar_data(id, vertex_id, data)
+
+
+        precice_dt = interface.advance(dt)
+        dt = np.min([precice_dt, my_dt])
+
+        if interface.is_action_required(precice.action_read_iteration_checkpoint()):
+            u = u_cp
+            v = v_cp
+            a = a_cp
+            t = t_cp
+            substep = 0
+
+            interface.mark_action_fulfilled(precice.action_read_iteration_checkpoint())
+
+            # empty buffers for next window
+            u_write = []
+            v_write = []
+            t_write = []
+            iterations += 1
+
+        else:
+            u = u_new
+            v = v_new
+            a = a_new
+            t += dt
+            substep += 1
+
+            # write data to buffers
+            u_write.append(u)
+            v_write.append(v)
+            t_write.append(t)
+
+    positions += u_write
+    velocities += v_write
+    times += t_write
+
+    interface.finalize()
+
+    # print errors
+    # analytic solution is only valid for this setup!
+    error = np.max(abs(u_analytical(np.array(times))-np.array(positions)))
+    errors.append(error)
+    my_dts.append(my_dt)
+    avg = np.average(n_iterations)
+    avg_iterations.append(avg)
+    print(f"{configured_precice_dt}, {my_dt}, {error}, {avg}")
+
+df = pd.DataFrame(index=dts)
+df.index.name = "dt"
+df["my_dt"] = my_dts
+df["error"] = errors
+df["iterations_avg"] = avg_iterations
+
+# TODO: Also add acceleration scheme in metadata!
+
+filepath = this_file.parent / f"{Cases.ACCELERATION.value}_{participant_name}_{args.time_stepping_left}_{args.time_stepping_right}_{interpolation_scheme}_{args.interpolation_degree}_{MultirateMode.SUBSTEPS.value}_{args.n_substeps_left}_{args.n_substeps_right}.csv"
+
+df.to_csv(filepath)
+
+add_metainfo(runner_file=this_file,
+             csv_file=filepath,
+             time_stepping_scheme_left=args.time_stepping_left,
+             time_stepping_scheme_right=args.time_stepping_right,
+             precice_version=precice.__version__,
+             read_waveform_scheme=interpolation_scheme,
+             read_waveform_order=args.interpolation_degree,
+             multirate_mode=MultirateMode.SUBSTEPS.value,
+             n_substeps_left=args.n_substeps_left,
+             n_substeps_right=args.n_substeps_right)

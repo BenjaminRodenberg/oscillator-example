@@ -18,7 +18,6 @@ def add_metainfo(runner_file, csv_file, time_stepping_scheme_left='not available
         f"# git commit: {chash}\n"
         f"# precice version: {precice_version}\n"
         f"# executable: {pathlib.Path(runner_file.resolve()).relative_to(repo_base.resolve())}\n"
-        f"# experiment: {Cases.MONOLITHIC.value}\n"
         f"# time stepping scheme left: {time_stepping_scheme_left}\n"
         f"# time stepping scheme right: {time_stepping_scheme_right}\n"
         f"# read waveform scheme: {read_waveform_scheme}\n"
