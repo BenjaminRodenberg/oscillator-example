@@ -27,15 +27,6 @@ class ReadWaveformSchemes(Enum):
     BSPLINE_CUBIC = "B_spline_cubic"  # Cubic B-splines
     BSPLINE_TEN = "B_spline_ten"  # tenth order B-splines
 
-class MultirateMode(Enum):
-    NONE = "None"  # Don't use any multirate
-    SUBCYCLING = "Subcycling"  # Use fixed window size and apply subcycling on both sides
-    SUBSTEPS = "substeps"  # Perform substeps
-    TWO_SUBSTEPS = "Two_substeps"  # Reduce window size and apply subcycling to always use two substeps
-    FOUR_SUBSTEPS = "Four_substeps"  # Reduce window size and apply subcycling to always use four substeps
-    EIGHT_SUBSTEPS = "Eight_substeps"  # Reduce window size and apply subcycling to always use eight substeps
-    MULTIRATE = "Multirate"  # Use fixed window size, perform 4 substeps on the left side and apply subcycling on the right
-
 
 class ParticipantNames(Enum):
     MASS_LEFT = "Mass-Left"

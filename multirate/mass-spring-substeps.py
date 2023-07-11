@@ -7,7 +7,7 @@ import precice
 import pathlib
 from substeps_configs.create_config import render
 
-from brot.enums import Cases, TimeSteppingSchemes, ReadWaveformSchemes, MultirateMode, ParticipantNames, DataNames, MeshNames
+from brot.enums import Cases, TimeSteppingSchemes, ReadWaveformSchemes, ParticipantNames, DataNames, MeshNames
 from brot.output import add_metainfo
 from brot.interpolation import do_linear_interpolation, do_lagrange_interpolation
 from brot.timesteppers import GeneralizedAlpha, RungeKutta4
@@ -271,7 +271,7 @@ df.index.name = "dt"
 df["my_dt"] = my_dts
 df["error"] = errors
 
-filepath = this_file.parent / f"{Cases.MULTIRATE.value}_{participant_name}_{args.time_stepping_left}_{args.time_stepping_right}_{interpolation_scheme}_{args.interpolation_degree}_{MultirateMode.SUBSTEPS.value}_{args.n_substeps_left}_{args.n_substeps_right}.csv"
+filepath = this_file.parent / f"{Cases.MULTIRATE.value}_{participant_name}_{args.time_stepping_left}_{args.time_stepping_right}_{interpolation_scheme}_{args.interpolation_degree}_{args.n_substeps_left}_{args.n_substeps_right}.csv"
 
 df.to_csv(filepath)
 
@@ -282,6 +282,5 @@ add_metainfo(runner_file=this_file,
              precice_version=precice.__version__,
              read_waveform_scheme=interpolation_scheme,
              read_waveform_order=args.interpolation_degree,
-             multirate_mode=MultirateMode.SUBSTEPS.value,
              n_substeps_left=args.n_substeps_left,
              n_substeps_right=args.n_substeps_right)

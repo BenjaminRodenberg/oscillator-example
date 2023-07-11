@@ -6,17 +6,19 @@ import pandas as pd
 import precice
 import pathlib
 
-from brot.enums import Cases, TimeSteppingSchemes, MultirateMode, ParticipantNames, DataNames, MeshNames
+from brot.enums import Cases, TimeSteppingSchemes, ParticipantNames, DataNames, MeshNames
 from brot.output import add_metainfo
 from brot.timesteppers import GeneralizedAlpha, RungeKutta4
 import brot.oscillator as oscillator
 
 this_file = pathlib.Path(__file__)
 
+n_substeps_default = 1
+
 parser = argparse.ArgumentParser()
 parser.add_argument("participantName", help="Name of the solver.", type=str)
 parser.add_argument("-ts", "--time-stepping", help="Time stepping scheme being used.", type=str, default=TimeSteppingSchemes.NEWMARK_BETA.value)
-parser.add_argument("-mr", "--multirate", help="Pick one of 3 modes for multirate", type=str, default=MultirateMode.NONE.value)
+parser.add_argument("-n", "--n-substeps", help="Number of substeps in one window.", type=int, default=n_substeps_default)
 
 try:
     args = parser.parse_args()
@@ -81,28 +83,9 @@ errors = []
 my_dts = []
 
 for dt in dts:
-    if args.multirate == MultirateMode.NONE.value:
-        # use same dt for both solvers and preCICE
-        my_dt = dt
-        configured_precice_dt = dt
-    elif args.multirate == MultirateMode.SUBCYCLING.value:
-        # use fixed dt for preCICE
-        configured_precice_dt = np.max(dts)
-        my_dt = dt / 4
-    elif args.multirate == MultirateMode.FOUR_SUBSTEPS.value:
-        configured_precice_dt = dt
-        # always use four substeps
-        my_dt = dt / 4
-    elif args.multirate == MultirateMode.MULTIRATE.value:
-        # use fixed dt for preCICE
-        configured_precice_dt = 0.04
-        if participant_name == ParticipantNames.MASS_LEFT.value:
-            # use fixed dt for left participant
-            my_dt = 0.01
-        elif participant_name == ParticipantNames.MASS_RIGHT.value:
-            my_dt = dt
-    else:
-        raise Exception(f"wrong multirate mode: {args.multirate}. Please use one of {[m.value for m in MultirateMode]}.")
+
+    configured_precice_dt = dt
+    my_dt = dt / args.n_substeps
 
     # use same dt for both solvers and preCICE
     configuration_file_name = f"configs/precice-config-{configured_precice_dt}.xml"

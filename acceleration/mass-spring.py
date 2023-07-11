@@ -7,7 +7,7 @@ import precice
 import pathlib
 from configs.create_config import render
 
-from brot.enums import Cases, TimeSteppingSchemes, ReadWaveformSchemes, MultirateMode, ParticipantNames, DataNames, MeshNames, AccelerationSchemes
+from brot.enums import Cases, TimeSteppingSchemes, ReadWaveformSchemes, ParticipantNames, DataNames, MeshNames, AccelerationSchemes
 from brot.output import add_metainfo
 from brot.timesteppers import GeneralizedAlpha, RungeKutta4
 import brot.oscillator as oscillator
@@ -101,7 +101,7 @@ else:
 print(f"time stepping scheme being used: {time_stepping}")
 print(f"participant: {participant_name}")
 print()
-print("configured_precice_dt, my_dt, error, avg iterations per window")
+print("configured_precice_dt, my_dt, error, avg it / window, min it / window, max it / window")
 
 dts = [0.2, 0.1, 0.05, 0.025, 0.0125]
 
@@ -110,6 +110,8 @@ interpolation_scheme = ReadWaveformSchemes.BSPLINE.value
 errors = []
 my_dts = []
 avg_iterations = []
+min_iterations = []
+max_iterations = []
 
 for dt in dts:
 
@@ -266,19 +268,22 @@ for dt in dts:
     error = np.max(abs(u_analytical(np.array(times))-np.array(positions)))
     errors.append(error)
     my_dts.append(my_dt)
-    avg = np.average(n_iterations)
-    avg_iterations.append(avg)
-    print(f"{configured_precice_dt}, {my_dt}, {error}, {avg}")
+    avg_iterations.append(np.average(n_iterations))
+    min_iterations.append(np.min(n_iterations))
+    max_iterations.append(np.max(n_iterations))
+    print(f"{configured_precice_dt}, {my_dt}, {error}, {np.average(n_iterations)}, {np.min(n_iterations)}, {np.max(n_iterations)}")
 
 df = pd.DataFrame(index=dts)
 df.index.name = "dt"
 df["my_dt"] = my_dts
 df["error"] = errors
-df["iterations_avg"] = avg_iterations
+df["avg(iterations)"] = avg_iterations
+df["min(iterations)"] = min_iterations
+df["max(iterations)"] = max_iterations
 
 # TODO: Also add acceleration scheme in metadata!
 
-filepath = this_file.parent / f"{Cases.ACCELERATION.value}_{participant_name}_{args.time_stepping_left}_{args.time_stepping_right}_{interpolation_scheme}_{args.interpolation_degree}_{MultirateMode.SUBSTEPS.value}_{args.n_substeps_left}_{args.n_substeps_right}.csv"
+filepath = this_file.parent / f"{Cases.ACCELERATION.value}_{participant_name}_{args.time_stepping_left}_{args.time_stepping_right}_{interpolation_scheme}_{args.interpolation_degree}_{args.n_substeps_left}_{args.n_substeps_right}_{args.acceleration_scheme}.csv"
 
 df.to_csv(filepath)
 
@@ -289,6 +294,6 @@ add_metainfo(runner_file=this_file,
              precice_version=precice.__version__,
              read_waveform_scheme=interpolation_scheme,
              read_waveform_order=args.interpolation_degree,
-             multirate_mode=MultirateMode.SUBSTEPS.value,
+             acceleration_scheme=args.acceleration_scheme,
              n_substeps_left=args.n_substeps_left,
              n_substeps_right=args.n_substeps_right)
