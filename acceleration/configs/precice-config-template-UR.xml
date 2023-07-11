@@ -61,7 +61,7 @@
       <participants first="Mass-Left" second="Mass-Right" />
       <max-time value="1" />
       <time-window-size value="{{time_window_size}}" />
-      <max-iterations value="2000" />
+      <max-iterations value="200" />
       {%- for force_left in forces_left %}
       <min-iteration-convergence-measure min-iterations="1" data="{{force_left}}" mesh="Mass-Left-Mesh"/>
       {%- endfor %}
@@ -78,7 +78,7 @@
       <exchange data="{{force_right}}" mesh="Mass-Left-Mesh" from="Mass-Right" to="Mass-Left" initialize="true"/>
       {%- endfor %}
       <acceleration:constant>
-        <relaxation value="1"/>
+        <relaxation value="0.5"/>
       </acceleration:constant>
     </coupling-scheme:parallel-implicit>
   </solver-interface>

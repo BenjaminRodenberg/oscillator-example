@@ -40,14 +40,14 @@
     <participants first="Mass-Left" second="Mass-Right" />
     <max-time value="1" />
     <time-window-size value="{{time_window_size}}" />
-    <max-iterations value="2000" />
+    <max-iterations value="200" />
     <min-iteration-convergence-measure min-iterations="1" data="Force-Left" mesh="Mass-Left-Mesh"/>
     <relative-convergence-measure data="Force-Left" mesh="Mass-Left-Mesh" limit="{{convergence_limit}}"/>
     <relative-convergence-measure data="Force-Right" mesh="Mass-Left-Mesh" limit="{{convergence_limit}}"/>
     <exchange data="Force-Left" mesh="Mass-Left-Mesh" from="Mass-Left" to="Mass-Right" initialize="true" substeps="{{substeps}}"/>
     <exchange data="Force-Right" mesh="Mass-Left-Mesh" from="Mass-Right" to="Mass-Left" initialize="true" substeps="{{substeps}}"/>
     <acceleration:constant>
-      <relaxation value="1"/>
+      <relaxation value="0.5"/>
     </acceleration:constant>
   </coupling-scheme:parallel-implicit>
 
