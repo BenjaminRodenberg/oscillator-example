@@ -18,14 +18,14 @@ class TimeSteppingSchemes(Enum):
 class ReadWaveformSchemes(Enum):
     ZERO = "Zero"  # No interpolation. Just piecewise constant
     LAGRANGE = "Lagrange"
-    LAGRANGE_LINEAR = "Lagrange_linear"  # Lagrange interpolation, first order
-    LAGRANGE_QUADRATIC = "Lagrange_quadratic"  # Lagrange interpolation, second order
-    HERMITE_CUBIC = "Hermite_cubic"  # Hermite interpolation, third order
+    LAGRANGE_LINEAR = "Lagrange_linear"  # Lagrange interpolation, first degree
+    LAGRANGE_QUADRATIC = "Lagrange_quadratic"  # Lagrange interpolation, second degree
+    HERMITE_CUBIC = "Hermite_cubic"  # Hermite interpolation, third degree
     HERMITE = "Hermite"
     BSPLINE = "B_spline"
     BSPLINE_LINEAR = "B_spline_linear"  # Linear B-splines
     BSPLINE_CUBIC = "B_spline_cubic"  # Cubic B-splines
-    BSPLINE_TEN = "B_spline_ten"  # tenth order B-splines
+    BSPLINE_TEN = "B_spline_ten"  # tenth degree B-splines
 
 
 class ParticipantNames(Enum):

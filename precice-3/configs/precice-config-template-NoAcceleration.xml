@@ -6,8 +6,8 @@
     <sink type="stream" output="stdout"  filter= "%Severity% > warning" format="preCICE:%ColorizedSeverity% %Message%" enabled="true" />
   </log>
 
-  <data:scalar name="Force-Left"  />
-  <data:scalar name="Force-Right"  />
+  <data:scalar name="Force-Left" waveform-degree="{{waveform_degree}}" />
+  <data:scalar name="Force-Right" waveform-degree="{{waveform_degree}}" />
 
   <mesh name="Mass-Left-Mesh">
     <use-data name="Force-Left" />
@@ -22,14 +22,14 @@
   <participant name="Mass-Left">
     <provide-mesh name="Mass-Left-Mesh" />
     <write-data name="Force-Left" mesh="Mass-Left-Mesh" />
-    <read-data name="Force-Right" mesh="Mass-Left-Mesh" waveform-order="{{waveform_order}}"/>
+    <read-data name="Force-Right" mesh="Mass-Left-Mesh" />
   </participant>
 
   <participant name="Mass-Right">
     <receive-mesh name="Mass-Left-Mesh" from="Mass-Left"/>
     <provide-mesh name="Mass-Right-Mesh" />
     <write-data name="Force-Right" mesh="Mass-Right-Mesh" />
-    <read-data  name="Force-Left" mesh="Mass-Right-Mesh" waveform-order="{{waveform_order}}" />
+    <read-data  name="Force-Left" mesh="Mass-Right-Mesh"  />
     <mapping:nearest-neighbor   direction="write" from="Mass-Right-Mesh" to="Mass-Left-Mesh" constraint="conservative" />
     <mapping:nearest-neighbor   direction="read"  from="Mass-Left-Mesh" to="Mass-Right-Mesh" constraint="conservative" />
   </participant>

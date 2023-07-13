@@ -110,8 +110,8 @@ for dt in dts:
     my_dt = dt/n_substeps_this
     other_dt = dt/n_substeps_other
 
-    waveform_order = args.interpolation_degree
-    render(configured_precice_dt, waveform_order, args.substeps, args.acceleration_scheme)
+    waveform_degree = args.interpolation_degree
+    render(configured_precice_dt, waveform_degree, args.substeps, args.acceleration_scheme)
 
     configuration_file_name = f"configs/precice-config.xml"
 
@@ -247,7 +247,7 @@ add_metainfo(runner_file=this_file,
              time_stepping_scheme_right=args.time_stepping_right,
              precice_version=precice.__version__,
              read_waveform_scheme=interpolation_scheme,
-             read_waveform_order=args.interpolation_degree,
+             read_waveform_degree=args.interpolation_degree,
              acceleration_scheme=args.acceleration_scheme,
              n_substeps_left=args.n_substeps_left,
              n_substeps_right=args.n_substeps_right)

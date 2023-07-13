@@ -4,7 +4,7 @@ from pathlib import Path
 from brot.enums import AccelerationSchemes
 
 
-def render(dt, waveform_order, substeps, acceleration_scheme):
+def render(dt, waveform_degree, substeps, acceleration_scheme):
     base_path = Path(__file__).parent.absolute()
 
     env = Environment(
@@ -27,9 +27,9 @@ def render(dt, waveform_order, substeps, acceleration_scheme):
 
     with open(os.path.join( ".", precice_config_name), "w") as file:
         file.write(precice_config_template.render(time_window_size=dt,
-                                                  waveform_order=waveform_order,
+                                                  waveform_degree=waveform_degree,
                                                   substeps=substeps,
                                                   convergence_limit=10e-6))
 
 if __name__ == "__main__":
-    render(dt=0.01, waveform_order=1, substeps=False, acceleration_scheme=AccelerationSchemes.CONSTANT.value)
+    render(dt=0.01, waveform_degree=1, substeps=False, acceleration_scheme=AccelerationSchemes.CONSTANT.value)

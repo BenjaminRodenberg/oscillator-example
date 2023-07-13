@@ -3,7 +3,7 @@ import pathlib
 
 from .enums import Cases, TimeSteppingSchemes
 
-def add_metainfo(runner_file, csv_file, time_stepping_scheme_left='not available', time_stepping_scheme_right='not available',  precice_version='not available', read_waveform_scheme='not available', read_waveform_order='not available', acceleration_scheme='not available', n_substeps_left='not available', n_substeps_right='not available'):
+def add_metainfo(runner_file, csv_file, time_stepping_scheme_left='not available', time_stepping_scheme_right='not available',  precice_version='not available', read_waveform_scheme='not available', read_waveform_degree='not available', acceleration_scheme='not available', n_substeps_left='not available', n_substeps_right='not available'):
     repo_base = runner_file.parent / ".."
 
     repo = git.Repo(repo_base)
@@ -21,7 +21,7 @@ def add_metainfo(runner_file, csv_file, time_stepping_scheme_left='not available
         f"# time stepping scheme left: {time_stepping_scheme_left}\n"
         f"# time stepping scheme right: {time_stepping_scheme_right}\n"
         f"# read waveform scheme: {read_waveform_scheme}\n"
-        f"# read waveform order: {read_waveform_order}\n"
+        f"# read waveform degree: {read_waveform_degree}\n"
         f"# acceleration scheme: {acceleration_scheme}\n"
         f"# n substeps left: {n_substeps_left}\n"
         f"# n substeps right: {n_substeps_right}\n"
