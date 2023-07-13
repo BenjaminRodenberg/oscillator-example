@@ -208,8 +208,8 @@ for dt in dts:
                 f[i] = do_lagrange_interpolation(t + t_f[i], ts, fs)
             elif interpolation_scheme == ReadWaveformSchemes.BSPLINE.value:
                 from scipy.interpolate import splrep, splev
-                b_spline_order = args.interpolation_degree
-                tck = splrep(ts, fs, k=b_spline_order)
+                b_spline_degree = args.interpolation_degree
+                tck = splrep(ts, fs, k=b_spline_degree)
                 interpolant = lambda t: splev(t, tck)
                 f[i] = interpolant(t + t_f[i])
 
