@@ -260,6 +260,7 @@ for dt in dts:
     positions += u_write
     velocities += v_write
     times += t_write
+    n_iterations.append(iterations)
 
     interface.finalize()
 
