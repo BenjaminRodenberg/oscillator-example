@@ -9,7 +9,7 @@ import pathlib
 from brot.enums import Cases, TimeSteppingSchemes, ReadWaveformSchemes, ParticipantNames, DataNames, MeshNames
 from brot.output import add_metainfo
 from brot.interpolation import do_linear_interpolation, do_cubic_interpolation
-from brot.timesteppers import GeneralizedAlpha, RungeKutta4
+from brot.timesteppers import GeneralizedAlpha, RungeKutta4, RadauIIA
 import brot.oscillator as oscillator
 
 this_file = pathlib.Path(__file__)
@@ -68,6 +68,12 @@ elif args.time_stepping == TimeSteppingSchemes.RUNGE_KUTTA_4.value:
         [-stiffness, 0   ], # dv
     ])
     time_stepper = RungeKutta4(ode_system=ode_system)
+elif args.time_stepping == TimeSteppingSchemes.Radau_IIA.value:
+    ode_system = np.array([
+        [0,          mass], # du
+        [-stiffness, 0   ], # dv
+    ])
+    time_stepper = RadauIIA(ode_system=ode_system)
 else:
     raise Exception(f"Invalid time stepping scheme {args.time_stepping}. Please use one of {[ts.value for ts in TimeSteppingSchemes]}")
 
@@ -238,7 +244,7 @@ for dt in dts:
     # analytic solution is only valid for this setup!
     error = np.max(abs(u_analytical(np.array(times))-np.array(positions)))
     errors.append(error)
-    print(f"{dt},{error}")
+    print(f"{dt}, {error}")
 
 df = pd.DataFrame(index=dts)
 df.index.name = "dt"

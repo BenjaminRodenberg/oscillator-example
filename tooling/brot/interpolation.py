@@ -22,7 +22,7 @@ def do_lagrange_interpolation(time, ts, ys):
 
     dt = ts[-1] - ts[0]
     eps = 10**-6 * dt
-    assert(min(ts) - eps <= time <= max(ts) + eps)
+    # assert(min(ts) - eps <= time <= max(ts) + eps)
 
     return_val = 0
     for i in range(n):

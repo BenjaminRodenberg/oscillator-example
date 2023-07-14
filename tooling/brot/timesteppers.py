@@ -1,6 +1,7 @@
 from typing import Tuple, List
 import numpy as np
 import numbers
+import scipy as sp
 
 class GeneralizedAlpha():
     alpha_f = None
@@ -101,5 +102,47 @@ class RungeKutta4():
             v_new = x_new[1]
 
         a_new = None
+
+        return u_new, v_new, a_new
+
+
+class RadauIIA():
+    def __init__(self, ode_system) -> None:
+        self.ode_system = ode_system
+        pass
+
+    def rhs_eval_points(self, dt) -> List[float]:
+        return np.linspace(0, dt, 5)  # will create an interpolant from this later
+
+    def do_step(self, u, v, a, f, dt) -> Tuple[float, float, float]:
+        from brot.interpolation import do_lagrange_interpolation
+
+        ts = self.rhs_eval_points(dt)
+
+        t0 = 0
+
+        assert(type(u) == type(v))
+
+        if type(u) is np.ndarray:
+            x0 = np.concatenate([u, v])
+            f = np.array(f)
+            assert(u.shape[0] == f.shape[1])
+            rhs_fun = lambda t,x: np.concatenate([np.array([np.zeros_like(t), np.zeros_like(t)]), [do_lagrange_interpolation(t, ts, f[:,i]) for i in range(u.shape[0])]])
+        elif isinstance(u, numbers.Number):
+            x0 = np.array([u, v])
+            rhs_fun = lambda t,x: np.array([np.zeros_like(t), do_lagrange_interpolation(t, ts, f)])
+        else:
+            raise Exception(f"Cannot handle input type {type(u)} of u and v")
+
+        def fun(t,x):
+            return self.ode_system.dot(x) + rhs_fun(t,x)
+
+        ret = sp.integrate.solve_ivp(fun, [t0, t0+dt], x0, method="Radau", first_step=dt, max_step=dt, rtol=10e10, atol=10e10)  # use large rtol and atol to circumvent error control.
+
+        a_new = None
+        if type(u) is np.ndarray:
+            u_new, v_new = ret.y[0:2,-1], ret.y[2:4,-1]
+        elif isinstance(u, numbers.Number):
+            u_new, v_new = ret.y[:,-1]
 
         return u_new, v_new, a_new

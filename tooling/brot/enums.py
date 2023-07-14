@@ -13,6 +13,7 @@ class TimeSteppingSchemes(Enum):
     NEWMARK_BETA = "Newmark_beta"
     GENERALIZED_ALPHA = "generalized_alpha"
     RUNGE_KUTTA_4 = "runge_kutta_4"
+    Radau_IIA = "radauIIA"  # 5th order implicit
 
 
 class ReadWaveformSchemes(Enum):

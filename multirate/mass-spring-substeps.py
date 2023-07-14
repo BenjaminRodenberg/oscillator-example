@@ -10,7 +10,7 @@ from substeps_configs.create_config import render
 from brot.enums import Cases, TimeSteppingSchemes, ReadWaveformSchemes, ParticipantNames, DataNames, MeshNames
 from brot.output import add_metainfo
 from brot.interpolation import do_linear_interpolation, do_lagrange_interpolation
-from brot.timesteppers import GeneralizedAlpha, RungeKutta4
+from brot.timesteppers import GeneralizedAlpha, RungeKutta4, RadauIIA
 import brot.oscillator as oscillator
 
 this_file = pathlib.Path(__file__)
@@ -95,6 +95,12 @@ elif time_stepping == TimeSteppingSchemes.RUNGE_KUTTA_4.value:
         [-stiffness, 0   ], # dv
     ])
     time_stepper = RungeKutta4(ode_system=ode_system)
+elif time_stepping == TimeSteppingSchemes.Radau_IIA.value:
+    ode_system = np.array([
+        [0,          mass], # du
+        [-stiffness, 0   ], # dv
+    ])
+    time_stepper = RadauIIA(ode_system=ode_system)
 else:
     raise Exception(f"Invalid time stepping scheme {time_stepping}. Please use one of {[ts.value for ts in TimeSteppingSchemes]}")
 

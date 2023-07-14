@@ -8,7 +8,7 @@ import pathlib
 
 from brot.enums import Cases, TimeSteppingSchemes
 from brot.output import add_metainfo
-from brot.timesteppers import GeneralizedAlpha, RungeKutta4
+from brot.timesteppers import GeneralizedAlpha, RungeKutta4, RadauIIA
 import brot.oscillator as oscillator
 
 this_file = pathlib.Path(__file__)
@@ -44,6 +44,14 @@ elif args.time_stepping == TimeSteppingSchemes.RUNGE_KUTTA_4.value:
         [oscillator.SpringMiddle.k, -oscillator.SpringRight.k - oscillator.SpringMiddle.k, 0, 0]  # dv_2
     ])
     time_stepper = RungeKutta4(ode_system=ode_system)
+elif args.time_stepping == TimeSteppingSchemes.Radau_IIA.value:
+    ode_system = np.array([
+        [0, 0, oscillator.MassLeft.m, 0                     ],              # du_1
+        [0, 0, 0,                     oscillator.MassRight.m],              # du_2
+        [-oscillator.SpringLeft.k - oscillator.SpringMiddle.k, oscillator.SpringMiddle.k, 0, 0], # dv_1
+        [oscillator.SpringMiddle.k, -oscillator.SpringRight.k - oscillator.SpringMiddle.k, 0, 0]  # dv_2
+    ])
+    time_stepper = RadauIIA(ode_system=ode_system)
 else:
     raise Exception(f"Invalid time stepping scheme {args.time_stepping}. Please use one of {[ts.value for ts in TimeSteppingSchemes]}")
 
@@ -67,7 +75,8 @@ for dt in dts:
     while t < T:
 
         # do generalized alpha step
-        f = [np.array([0, 0]) for _ in range(4)]  # no external forces for monolithic system
+        ts = time_stepper.rhs_eval_points(dt)
+        f = [np.array([0, 0]) for _ in range(len(ts))]  # no external forces for monolithic system
         u_new, v_new, a_new = time_stepper.do_step(u, v, a, f, dt)
 
         u = u_new
