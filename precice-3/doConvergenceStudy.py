@@ -6,7 +6,6 @@ import datetime
 import os
 import uuid
 import argparse
-from enum import Enum
 
 
 def render(precice_config_params):
@@ -35,7 +34,7 @@ def do_run(precice_config_params, participants):
 
     for participant in participants:
         with open(participant["folder"] / participant['logfile'], "w") as outfile:
-            cmd = ["python3", participant["folder"] / participant["exec"]] + participant["params"] + [f"{keyword}={value}" for keyword, value in participant['kwargs'].items()]
+            cmd = participant["exec"] + participant["params"] + [f"{keyword}={value}" for keyword, value in participant['kwargs'].items()]
             p = subprocess.Popen(cmd,
                                  cwd=participant["folder"],
                                  stdout=outfile)
@@ -88,34 +87,37 @@ if __name__ == "__main__":
 
     # Define values that will be inserted into precice-config-template.xml here
     precice_config_params = {
-        'time_window_size': '',  # will be defined later
+        'time_window_size': None,  # will be defined later
+        'waveform_degree': 3,
     }
+
+    root_folder = Path(__file__).parent.absolute()
 
     # Define how participants will be executed here
     participants = [
         {
             "name": "Mass-Left",  # identifier of this participant
-            "folder": Path(__file__).parent.absolute(),  # root folder of this participant
-            "exec": "oscillator.py",  # name of the python script, e.g. script.py
+            "folder": root_folder,  # root folder of this participant
+            "exec": ["python3", "oscillator.py"],  # how to execute the participant, e.g. python3 script.py
             "params": ["Mass-Left"],  # list of positional arguments that will be used. Results in python3 script.py param1 ...
             "kwargs": {  # dict with keyword arguments that will be used. Results in python3 script.py param1 ... k1=v1 k2=v2 ...
                 '--time-stepping': 'radauIIA',
-                '--n-substeps': '',  # will be defined later
+                '--n-substeps': None,  # will be defined later
             },
         },
         {
             "name": "Mass-Right",
-            "folder": Path(__file__).parent.absolute(),
-            "exec": "oscillator.py",
+            "folder": root_folder,
+            "exec": ["python3", "oscillator.py"],
             "params": ["Mass-Right"],
             "kwargs": {
                 '--time-stepping': 'radauIIA',
-                '--n-substeps': '',  # will be defined later
+                '--n-substeps': None,  # will be defined later
             },
         },
     ]
 
-    summary_file = Path("convergence-studies") / f"{uuid.uuid4()}.csv"
+    summary_file = root_folder / "convergence-studies" / f"{uuid.uuid4()}.csv"
 
     for dt in [args.base_time_window_size * 0.5**i for i in range(args.time_window_refinements)]:
         for n in [2**i for i in range(args.time_step_refinements)]:

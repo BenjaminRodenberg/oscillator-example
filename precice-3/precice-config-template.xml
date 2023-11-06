@@ -6,8 +6,8 @@
     <sink type="stream" output="stdout"  filter= "%Severity% > warning" format="preCICE:%ColorizedSeverity% %Message%" enabled="true" />
   </log> -->
 
-  <data:scalar name="Force-Left" waveform-degree="3" />
-  <data:scalar name="Force-Right" waveform-degree="3" />
+  <data:scalar name="Force-Left" waveform-degree="{{waveform_degree}}" />
+  <data:scalar name="Force-Right" waveform-degree="{{waveform_degree}}" />
 
   <mesh name="Mass-Left-Mesh" dimensions="2">
     <use-data name="Force-Left" />
