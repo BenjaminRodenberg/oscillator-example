@@ -8,7 +8,7 @@ import uuid
 import argparse
 
 
-def render(precice_config_params):
+def render(template_path, precice_config_params):
     base_path = Path(__file__).parent.absolute()
 
     env = Environment(
@@ -16,7 +16,7 @@ def render(precice_config_params):
         autoescape=select_autoescape(['xml'])
     )
 
-    precice_config_template = env.get_template('precice-config-template.xml')
+    precice_config_template = env.get_template(template_path)
 
     precice_config_name = base_path / "precice-config.xml"
 
@@ -24,8 +24,8 @@ def render(precice_config_params):
         file.write(precice_config_template.render(precice_config_params))
 
 
-def do_run(precice_config_params, participants):
-    render(precice_config_params)
+def do_run(template_path, precice_config_params, participants):
+    render(template_path, precice_config_params)
     print(f"{datetime.datetime.now()}: Start run with parameters {precice_config_params}")
     print("Running...")
 
@@ -53,8 +53,14 @@ def do_run(precice_config_params, participants):
     summary = {"time window size": time_window_size}
     for participant in participants:
         df = pd.read_csv(participant["folder"] / f"errors-{participant['name']}.csv", comment="#")
-        summary[f"time step size {participant['name']}"] = time_window_size / participant['kwargs']['--n-substeps']
-        summary[f"error {participant['name']}"] = df["errors"].abs().max()
+        if abs(df.times.diff().var() / df.times.diff().mean()) > 10e-10:
+            term_size = os.get_terminal_size()
+            print('-' * term_size.columns)
+            print("WARNING: times vary stronger than expected. Note that adaptive time stepping is not supported.")
+            print(df)
+            print('-' * term_size.columns)
+        summary[f"time step size {participant['name']}"] = df.times.diff().mean()
+        summary[f"error {participant['name']}"] = df.errors.abs().max()
     print("Done.")
 
     return summary
@@ -63,6 +69,10 @@ def do_run(precice_config_params, participants):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Solving heat equation for simple or complex interface case")
+    parser.add_argument(
+        "template_path",
+        help="template for the preCICE configuration file",
+        type=str)
     parser.add_argument(
         "-dt",
         "--base-time-window-size",
@@ -89,6 +99,7 @@ if __name__ == "__main__":
     precice_config_params = {
         'time_window_size': None,  # will be defined later
         'waveform_degree': 3,
+        'substeps': True,
     }
 
     root_folder = Path(__file__).parent.absolute()
@@ -126,7 +137,7 @@ if __name__ == "__main__":
             for p in participants:
                 p['kwargs']['--n-substeps'] = n
 
-            summary = do_run(precice_config_params, participants)
+            summary = do_run(args.template_path, precice_config_params, participants)
             df = pd.concat([df, pd.DataFrame(summary, index=[0])], ignore_index=True)
 
             print(f"Write preliminary output to {summary_file}")
