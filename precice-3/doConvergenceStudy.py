@@ -67,6 +67,7 @@ def do_run(template_path, precice_config_params, participants):
 
 
 if __name__ == "__main__":
+    n_supported_participants = 2
 
     parser = argparse.ArgumentParser(description="Solving heat equation for simple or complex interface case")
     parser.add_argument(
@@ -76,7 +77,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-dt",
         "--base-time-window-size",
-        help="Base time window / time step size",
+        help="Base time window size",
         type=float,
         default=0.04)
     parser.add_argument(
@@ -86,11 +87,33 @@ if __name__ == "__main__":
         type=int,
         default=5)
     parser.add_argument(
+        "-sb",
+        "--base-time-step-refinement",
+        help="Base factor for time window size / time step size",
+        type=int,
+        nargs=n_supported_participants,
+        default=[1, 1])
+    parser.add_argument(
         "-s",
         "--time-step-refinements",
-        help="Number of refinements by factor 2 for the time step size ( >1 will result in subcycling)",
+        help="Number of refinements by given factor for the time step size of each participant ( >1 will result in subcycling)",
         type=int,
         default=1)
+    parser.add_argument(
+        "-sf",
+        "--time-step-refinement-factor",
+        help="Factor of time step refinements for each participant (use 1, if you want to use a fixed time step / time window relationship for one participant while refining the time steps for the other participant)",
+        type=int,
+        nargs=n_supported_participants,
+        default=[2, 2])
+    ## add solver specific arguments below, if needed
+    parser.add_argument(
+        "-tss",
+        "--time-stepping-scheme",
+        help="Define time stepping scheme used by each solver",
+        type=str,
+        nargs=n_supported_participants,
+        default=2*["Newmark_beta"])
     args = parser.parse_args()
 
     df = pd.DataFrame()
@@ -112,7 +135,7 @@ if __name__ == "__main__":
             "exec": ["python3", "oscillator.py"],  # how to execute the participant, e.g. python3 script.py
             "params": ["Mass-Left"],  # list of positional arguments that will be used. Results in python3 script.py param1 ...
             "kwargs": {  # dict with keyword arguments that will be used. Results in python3 script.py param1 ... k1=v1 k2=v2 ...
-                '--time-stepping': 'radauIIA',
+                '--time-stepping': args.time_stepping_scheme[0],
                 '--n-substeps': None,  # will be defined later
             },
         },
@@ -122,20 +145,25 @@ if __name__ == "__main__":
             "exec": ["python3", "oscillator.py"],
             "params": ["Mass-Right"],
             "kwargs": {
-                '--time-stepping': 'radauIIA',
+                '--time-stepping': args.time_stepping_scheme[1],
                 '--n-substeps': None,  # will be defined later
             },
         },
     ]
 
+    if len(participants) != n_supported_participants:
+        raise Exception(f"Currently only supports coupling of {n_supported_participants} participants")
+
     summary_file = root_folder / "convergence-studies" / f"{uuid.uuid4()}.csv"
 
     for dt in [args.base_time_window_size * 0.5**i for i in range(args.time_window_refinements)]:
-        for n in [2**i for i in range(args.time_step_refinements)]:
-
+        for refinement in range(args.time_step_refinements):
             precice_config_params['time_window_size'] = dt
+            i = 0
             for p in participants:
-                p['kwargs']['--n-substeps'] = n
+                print(args.base_time_step_refinement[i]*args.time_step_refinement_factor[i]**refinement)
+                p['kwargs']['--n-substeps'] = args.base_time_step_refinement[i]*args.time_step_refinement_factor[i]**refinement
+                i += 1
 
             summary = do_run(args.template_path, precice_config_params, participants)
             df = pd.concat([df, pd.DataFrame(summary, index=[0])], ignore_index=True)
