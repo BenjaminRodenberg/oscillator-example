@@ -6,6 +6,7 @@ import datetime
 import os
 import uuid
 import argparse
+import sys
 
 
 def render(template_path, precice_config_params):
@@ -114,6 +115,12 @@ if __name__ == "__main__":
         type=str,
         nargs=n_supported_participants,
         default=2*["Newmark_beta"])
+    parser.add_argument(
+        "-wd",
+        "--waveform-degree",
+        help="Waveform degree being used",
+        type=int,
+        default=1)
     args = parser.parse_args()
 
     df = pd.DataFrame()
@@ -121,7 +128,7 @@ if __name__ == "__main__":
     # Define values that will be inserted into precice-config-template.xml here
     precice_config_params = {
         'time_window_size': None,  # will be defined later
-        'waveform_degree': 3,
+        'waveform_degree': args.waveform_degree,
         'substeps': True,
     }
 
@@ -161,7 +168,6 @@ if __name__ == "__main__":
             precice_config_params['time_window_size'] = dt
             i = 0
             for p in participants:
-                print(args.base_time_step_refinement[i]*args.time_step_refinement_factor[i]**refinement)
                 p['kwargs']['--n-substeps'] = args.base_time_step_refinement[i]*args.time_step_refinement_factor[i]**refinement
                 i += 1
 
@@ -189,6 +195,7 @@ if __name__ == "__main__":
     metadata = {
         "git repository": repo.remotes.origin.url,
         "git commit": chash,
+        "run cmd": "python3 " + " ".join(sys.argv),
         "args": args,
         "precice_config_params": precice_config_params,
         "participants": participants,
