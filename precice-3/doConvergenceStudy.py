@@ -186,6 +186,7 @@ if __name__ == "__main__":
     print(f"Write final output to {summary_file}")
 
     import git
+    import precice
 
     repo = git.Repo(__file__, search_parent_directories=True)
     chash = str(repo.head.commit)[:7]
@@ -195,6 +196,8 @@ if __name__ == "__main__":
     metadata = {
         "git repository": repo.remotes.origin.url,
         "git commit": chash,
+        "precice.get_version_information()": precice.get_version_information(),
+        "precice.__version__": precice.__version__,
         "run cmd": "python3 " + " ".join(sys.argv),
         "args": args,
         "precice_config_params": precice_config_params,
