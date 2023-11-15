@@ -5,8 +5,6 @@ import numpy as np
 from numpy.linalg import eig
 import precice
 from enum import Enum
-import csv
-import os
 import pandas as pd
 from pathlib import Path
 
@@ -207,11 +205,13 @@ with open(errors_csv, 'a') as f:
     df.to_csv(f)
 
 # output trajectory
-if not os.path.exists("output"):
-    os.makedirs("output")
+trajectory_df = pd.DataFrame()
+df["time"] = times
+df["position"] = positions
+df["velocity"] = velocities
 
-with open(f'output/trajectory-{participant_name}.csv', 'w') as file:
-    csv_write = csv.writer(file, delimiter=';')
-    csv_write.writerow(['time', 'position', 'velocity'])
-    for t, u, v in zip(times, positions, velocities):
-        csv_write.writerow([t, u, v])
+trajectory_csv = Path(f"trajectory-{participant_name}.csv")
+errors_csv.unlink(trajectory_csv=True)
+
+with open(trajectory_csv, 'a') as f:
+    trajectory_df.to_csv(f)

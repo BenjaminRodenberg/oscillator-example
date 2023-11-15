@@ -70,7 +70,7 @@ def do_run(template_path, precice_config_params, participants):
 if __name__ == "__main__":
     n_supported_participants = 2
 
-    parser = argparse.ArgumentParser(description="Solving heat equation for simple or complex interface case")
+    parser = argparse.ArgumentParser(description="Solving oscillator example.")
     parser.add_argument(
         "template_path",
         help="template for the preCICE configuration file",
@@ -93,7 +93,7 @@ if __name__ == "__main__":
         help="Base factor for time window size / time step size",
         type=int,
         nargs=n_supported_participants,
-        default=[1, 1])
+        default=n_supported_participants*[1])
     parser.add_argument(
         "-s",
         "--time-step-refinements",
@@ -106,7 +106,7 @@ if __name__ == "__main__":
         help="Factor of time step refinements for each participant (use 1, if you want to use a fixed time step / time window relationship for one participant while refining the time steps for the other participant)",
         type=int,
         nargs=n_supported_participants,
-        default=[2, 2])
+        default=n_supported_participants*[2])
     ## add solver specific arguments below, if needed
     parser.add_argument(
         "-tss",
@@ -114,7 +114,7 @@ if __name__ == "__main__":
         help="Define time stepping scheme used by each solver",
         type=str,
         nargs=n_supported_participants,
-        default=2*["Newmark_beta"])
+        default=n_supported_participants*["Newmark_beta"])
     parser.add_argument(
         "-wd",
         "--waveform-degree",
