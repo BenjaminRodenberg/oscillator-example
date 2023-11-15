@@ -44,7 +44,7 @@ def do_run(participants):
             print('-' * term_size.columns)
         summary[f"time step size {participant['name']}"] = df.times.diff().mean()
         summary[f"error1 {participant['name']}"] = df.errors1.abs().max()
-        summary[f"error2 {participant['name']}"] = df.errors1.abs().max()
+        summary[f"error2 {participant['name']}"] = df.errors2.abs().max()
     print("Done.")
 
     return summary
