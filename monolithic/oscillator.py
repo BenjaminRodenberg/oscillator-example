@@ -33,18 +33,18 @@ elif args.time_stepping_scheme == TimeSteppingSchemes.NEWMARK_BETA.value:
     time_stepper = GeneralizedAlpha(stiffness=K, mass=M, alpha_f=0.0, alpha_m=0.0)
 elif args.time_stepping_scheme == TimeSteppingSchemes.RUNGE_KUTTA_4.value:
     ode_system = np.array([
-        [0, 0, oscillator.MassLeft.m, 0                     ],              # du_1
-        [0, 0, 0,                     oscillator.MassRight.m],              # du_2
-        [-oscillator.SpringLeft.k - oscillator.SpringMiddle.k, oscillator.SpringMiddle.k, 0, 0], # dv_1
-        [oscillator.SpringMiddle.k, -oscillator.SpringRight.k - oscillator.SpringMiddle.k, 0, 0]  # dv_2
+        [0, 0, 1, 0],              # du_1
+        [0, 0, 0, 1],              # du_2
+        [(-oscillator.SpringLeft.k - oscillator.SpringMiddle.k) / oscillator.MassLeft.m, oscillator.SpringMiddle.k / oscillator.MassLeft.m, 0, 0], # dv_1
+        [oscillator.SpringMiddle.k / oscillator.MassRight.m, (-oscillator.SpringRight.k - oscillator.SpringMiddle.k) / oscillator.MassRight.m, 0, 0]  # dv_2
     ])
     time_stepper = RungeKutta4(ode_system=ode_system)
 elif args.time_stepping_scheme == TimeSteppingSchemes.Radau_IIA.value:
     ode_system = np.array([
-        [0, 0, oscillator.MassLeft.m, 0                     ],              # du_1
-        [0, 0, 0,                     oscillator.MassRight.m],              # du_2
-        [-oscillator.SpringLeft.k - oscillator.SpringMiddle.k, oscillator.SpringMiddle.k, 0, 0], # dv_1
-        [oscillator.SpringMiddle.k, -oscillator.SpringRight.k - oscillator.SpringMiddle.k, 0, 0]  # dv_2
+        [0, 0, 1, 0],              # du_1
+        [0, 0, 0, 1],              # du_2
+        [(-oscillator.SpringLeft.k - oscillator.SpringMiddle.k) / oscillator.MassLeft.m, oscillator.SpringMiddle.k / oscillator.MassLeft.m, 0, 0], # dv_1
+        [oscillator.SpringMiddle.k / oscillator.MassRight.m, (-oscillator.SpringRight.k - oscillator.SpringMiddle.k) / oscillator.MassRight.m, 0, 0]  # dv_2
     ])
     time_stepper = RadauIIA(ode_system=ode_system)
 else:
