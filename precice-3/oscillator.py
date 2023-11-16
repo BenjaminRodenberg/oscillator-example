@@ -139,7 +139,11 @@ while participant.is_coupling_ongoing():
 
     # compute time step size for this time step
     precice_dt = participant.get_max_time_step_size()
-    dt = np.min([precice_dt, my_dt])
+    dt_tol = 1e-13
+    if(abs(precice_dt - my_dt) < dt_tol):
+        dt = precice_dt
+    else:
+        dt = np.min([precice_dt, my_dt])
 
     read_times = time_stepper.rhs_eval_points(dt)
     f = len(read_times) * [None]
