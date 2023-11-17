@@ -152,7 +152,7 @@ while participant.is_coupling_ongoing():
         read_data = participant.read_data(mesh_name, read_data_name, vertex_ids, read_times[i])
         f[i] = read_data[0]
 
-    # do generalized alpha step
+    # do time stepping
     u_new, v_new, a_new = time_stepper.do_step(u, v, a, f, dt)
     t_new = t + dt
 
@@ -215,7 +215,7 @@ df["position"] = positions
 df["velocity"] = velocities
 
 trajectory_csv = Path(f"trajectory-{participant_name}.csv")
-errors_csv.unlink(trajectory_csv=True)
+trajectory_csv.unlink(missing_ok=True)
 
 with open(trajectory_csv, 'a') as f:
     trajectory_df.to_csv(f)
