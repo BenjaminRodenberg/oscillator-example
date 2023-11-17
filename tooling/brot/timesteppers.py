@@ -119,6 +119,9 @@ class RadauIIA():
 
         ts = self.rhs_eval_points(dt)
 
+        if isinstance(f, numbers.Number):  # if f is number, assume constant f
+            f = len(ts)*[f]
+
         t0 = 0
 
         assert(type(u) == type(v))
