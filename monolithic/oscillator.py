@@ -105,11 +105,11 @@ with open(errors_csv, 'a') as f:
 
 # output trajectory
 trajectory_df = pd.DataFrame()
-df["time"] = times
-df["position_1"] = positions_1
-df["position_2"] = positions_2
-df["velocity_1"] = velocities_1
-df["velocity_2"] = velocities_2
+trajectory_df["time"] = times
+trajectory_df["position_1"] = positions_1
+trajectory_df["position_2"] = positions_2
+trajectory_df["velocity_1"] = velocities_1
+trajectory_df["velocity_2"] = velocities_2
 
 trajectory_csv = Path(f"trajectory-{participant_name}.csv")
 trajectory_csv.unlink(missing_ok=True)
