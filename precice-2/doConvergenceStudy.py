@@ -115,12 +115,6 @@ if __name__ == "__main__":
         type=str,
         nargs=n_supported_participants,
         default=n_supported_participants*["Newmark_beta"])
-    parser.add_argument(
-        "-wd",
-        "--waveform-degree",
-        help="Waveform degree being used",
-        type=int,
-        default=1)
     args = parser.parse_args()
 
     df = pd.DataFrame()
@@ -128,8 +122,6 @@ if __name__ == "__main__":
     # Define values that will be inserted into precice-config-template.xml here
     precice_config_params = {
         'time_window_size': None,  # will be defined later
-        'waveform_degree': args.waveform_degree,
-        'substeps': True,
     }
 
     root_folder = Path(__file__).parent.absolute()
