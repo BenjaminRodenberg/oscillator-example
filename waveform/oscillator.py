@@ -86,8 +86,11 @@ dt = np.min([precice_dt, my_dt])
 
 if participant.is_action_required(
         precice.action_write_initial_data()):
-    participant.write_scalar_data(
-        write_data_id, vertex_id, write_data)
+    participant.write_scalar_data(write_data_id, vertex_id, write_data)
+
+    if(args.interpolation_scheme == ReadWaveformSchemes.HERMITE_CUBIC.value):
+        participant.write_scalar_data(d_dt_write_data_id, vertex_id, d_dt_write_data)
+
     participant.mark_action_fulfilled(precice.action_write_initial_data())
 
 participant.initialize_data()
