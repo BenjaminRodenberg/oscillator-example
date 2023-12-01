@@ -89,6 +89,7 @@ df["errors1"] = abs(analytical_1(np.array(times))-np.array(positions_1))
 df["errors2"] = abs(analytical_2(np.array(times))-np.array(positions_2))
 df = df.set_index('times')
 metadata = f'''# time_step_size: {dt}
+# time stepping scheme: {args.time_stepping}
 '''
 
 participant_name = "Oscillator"
@@ -115,4 +116,5 @@ trajectory_csv = Path(f"trajectory-{participant_name}.csv")
 trajectory_csv.unlink(missing_ok=True)
 
 with open(trajectory_csv, 'a') as f:
+    f.write(f"{metadata}")
     trajectory_df.to_csv(f)

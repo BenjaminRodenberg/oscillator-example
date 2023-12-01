@@ -13,6 +13,12 @@ The following examples are included here:
 5) `acceleration`: A partitioned solution of the oscillator using preCICE 2.5[^3]. Implementing waveform ideas from [^1] in the adapter code. Additionally illustrating how to implement underrelaxation and quasi-Newton waveform iteration following the approach from [^5]
 6) `precice-3`: A partitioned solution of the oscillator using preCICE 3.x[^4]. The native API from preCICE 3.x is used to apply waveform iteration.
 
+## Running the code
+
+Each of the provided cases offers the script `doConvergenceStudy.py` to automatically run convergence studies for each case with a given set of parameters. Refer to `python3 doConvergenceStudy.py --help` for available parameters.
+
+If you want to individually run the case, please run `python3 oscillator.py`. For the monolithic case (1) it is sufficient to run this command in a single terminal. If you want to run one of the partitioned cases (2-6) please open two terminals and run `python3 oscillator.py Mass-Left` and `python3 oscillator.py Mass-Right`. Again, refer to `python3 oscillator.py --help` for a list of available parameters.
+
 ## Code Reproducibility
 
 It is generally recommended to use the appropriate version of the preCICE virtual machine[^3][^4] for run all experiments. See https://precice.org/installation-vm.html for details.

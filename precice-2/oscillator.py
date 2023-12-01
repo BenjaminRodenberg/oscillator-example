@@ -2,7 +2,6 @@ from __future__ import division
 
 import argparse
 import numpy as np
-from numpy.linalg import eig
 import precice
 from enum import Enum
 import pandas as pd
@@ -202,6 +201,7 @@ df["errors"] = abs(this_mass.u_analytical(np.array(times)) - np.array(positions)
 df = df.set_index('times')
 metadata = f'''# time_window_size: {precice_dt}
 # time_step_size: {my_dt}
+# time stepping scheme: {args.time_stepping}
 '''
 
 errors_csv = Path(f"errors-{participant_name}.csv")
@@ -224,4 +224,5 @@ trajectory_csv = Path(f"trajectory-{participant_name}.csv")
 trajectory_csv.unlink(missing_ok=True)
 
 with open(trajectory_csv, 'a') as f:
+    f.write(f"{metadata}")
     trajectory_df.to_csv(f)
