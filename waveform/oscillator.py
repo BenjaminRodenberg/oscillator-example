@@ -127,10 +127,12 @@ else:
         f"Invalid time stepping scheme {args.time_stepping}. Please use one of {[ts.value for ts in TimeSteppingSchemes]}")
 
 
+cpl_forces = []
 positions = []
 velocities = []
 times = []
 
+f_write = [f_end]
 u_write = [u]
 v_write = [v]
 t_write = [t]
@@ -148,6 +150,7 @@ while participant.is_coupling_ongoing():
             d_dt_f_start = d_dt_f_end  # time derivative of force at the beginning of the window
 
         # store data for plotting and postprocessing
+        cpl_forces += f_write
         positions += u_write
         velocities += v_write
         times += t_write
@@ -199,6 +202,7 @@ while participant.is_coupling_ongoing():
         a = a_cp
         t = t_cp
         # empty buffers for next window
+        f_write = []
         u_write = []
         v_write = []
         t_write = []
@@ -213,11 +217,13 @@ while participant.is_coupling_ongoing():
         t = t_new
 
         # write data to buffers
+        f_write.append(f_end)
         u_write.append(u)
         v_write.append(v)
         t_write.append(t)
 
 # store final result
+cpl_forces += f_write
 positions += u_write
 velocities += v_write
 times += t_write
@@ -248,6 +254,7 @@ trajectory_df = pd.DataFrame()
 trajectory_df["time"] = times
 trajectory_df["position"] = positions
 trajectory_df["velocity"] = velocities
+trajectory_df["energy"] = 0.5 * stiffness * np.array(positions)**2 + 0.5 * mass * np.array(velocities)**2 - 0.5 * np.array(cpl_forces) * np.array(positions)
 
 trajectory_csv = Path(f"trajectory-{participant_name}.csv")
 trajectory_csv.unlink(missing_ok=True)
