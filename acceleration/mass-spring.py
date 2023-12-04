@@ -157,12 +157,10 @@ for dt in dts:
     t = 0
 
     positions = []
-    velocities = []
     times = []
     n_iterations = []
 
     u_write = [u]
-    v_write = [v]
     t_write = [t]
 
     substep = 0
@@ -184,7 +182,6 @@ for dt in dts:
 
             # store data for plotting and postprocessing
             positions += u_write
-            velocities += v_write
             times += t_write
 
             if iterations > 0:  # don't write data, when writing checkpoint at beginning of first window
@@ -241,7 +238,6 @@ for dt in dts:
 
             # empty buffers for next window
             u_write = []
-            v_write = []
             t_write = []
             iterations += 1
 
@@ -254,11 +250,9 @@ for dt in dts:
 
             # write data to buffers
             u_write.append(u)
-            v_write.append(v)
             t_write.append(t)
 
     positions += u_write
-    velocities += v_write
     times += t_write
     n_iterations.append(iterations)
 

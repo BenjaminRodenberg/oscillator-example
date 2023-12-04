@@ -57,8 +57,6 @@ t = 0
 
 positions_1 = [u[0]]
 positions_2 = [u[1]]
-velocities_1 = [v[0]]
-velocities_2 = [v[1]]
 times = [t]
 
 dt = args.time_step_size
@@ -79,8 +77,6 @@ while t < T:
 
     positions_1.append(u[0])
     positions_2.append(u[1])
-    velocities_1.append(v[0])
-    velocities_2.append(v[1])
     times.append(t)
 
 df = pd.DataFrame()
@@ -103,18 +99,3 @@ print(f"{dt},{df['errors1'].max()},,{df['errors2'].max()}")
 with open(errors_csv, 'a') as f:
     f.write(f"{metadata}")
     df.to_csv(f)
-
-# output trajectory
-trajectory_df = pd.DataFrame()
-trajectory_df["time"] = times
-trajectory_df["position_1"] = positions_1
-trajectory_df["position_2"] = positions_2
-trajectory_df["velocity_1"] = velocities_1
-trajectory_df["velocity_2"] = velocities_2
-
-trajectory_csv = Path(f"trajectory-{participant_name}.csv")
-trajectory_csv.unlink(missing_ok=True)
-
-with open(trajectory_csv, 'a') as f:
-    f.write(f"{metadata}")
-    trajectory_df.to_csv(f)

@@ -126,11 +126,9 @@ else:
 
 
 positions = []
-velocities = []
 times = []
 
 u_write = [u]
-v_write = [v]
 t_write = [t]
 
 while participant.is_coupling_ongoing():
@@ -142,7 +140,6 @@ while participant.is_coupling_ongoing():
         t_cp = t
         # store data for plotting and postprocessing
         positions += u_write
-        velocities += v_write
         times += t_write
 
         participant.mark_action_fulfilled(
@@ -171,7 +168,6 @@ while participant.is_coupling_ongoing():
         t = t_cp
         # empty buffers for next window
         u_write = []
-        v_write = []
         t_write = []
 
         participant.mark_action_fulfilled(
@@ -185,12 +181,10 @@ while participant.is_coupling_ongoing():
 
         # write data to buffers
         u_write.append(u)
-        v_write.append(v)
         t_write.append(t)
 
 # store final result
 positions += u_write
-velocities += v_write
 times += t_write
 
 participant.finalize()
@@ -213,16 +207,3 @@ print(f"{my_dt},{df['errors'].max()}")
 with open(errors_csv, 'a') as f:
     f.write(f"{metadata}")
     df.to_csv(f)
-
-# output trajectory
-trajectory_df = pd.DataFrame()
-trajectory_df["time"] = times
-trajectory_df["position"] = positions
-trajectory_df["velocity"] = velocities
-
-trajectory_csv = Path(f"trajectory-{participant_name}.csv")
-trajectory_csv.unlink(missing_ok=True)
-
-with open(trajectory_csv, 'a') as f:
-    f.write(f"{metadata}")
-    trajectory_df.to_csv(f)
