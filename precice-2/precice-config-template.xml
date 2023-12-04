@@ -40,7 +40,7 @@
 
     <coupling-scheme:parallel-implicit>
       <participants first="Mass-Left" second="Mass-Right" />
-      <max-time value="1" />
+      <max-time value="{{max_time | default(1)}}" />
       <time-window-size value="{{time_window_size}}" />
       <max-iterations value="200" />
       <min-iteration-convergence-measure min-iterations="1" data="Force-Left" mesh="Mass-Left-Mesh"/>

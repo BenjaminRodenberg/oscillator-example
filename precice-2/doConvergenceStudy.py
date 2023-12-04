@@ -76,6 +76,12 @@ if __name__ == "__main__":
         help="template for the preCICE configuration file",
         type=str)
     parser.add_argument(
+        "-T",
+        "--max-time",
+        help="Max simulation time",
+        type=float,
+        default=1.0)
+    parser.add_argument(
         "-dt",
         "--base-time-window-size",
         help="Base time window size",
@@ -122,6 +128,7 @@ if __name__ == "__main__":
     # Define values that will be inserted into precice-config-template.xml here
     precice_config_params = {
         'time_window_size': None,  # will be defined later
+        'max_time': args.max_time,
     }
 
     root_folder = Path(__file__).parent.absolute()
