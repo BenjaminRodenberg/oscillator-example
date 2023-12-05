@@ -145,9 +145,9 @@ times = []
 u_write = [u]
 t_write = [t]
 
-substep = 0
+substep = 1
 write_buffer = {}  # internal buffer for write data until final advance of window is called
-f_read = (n_substeps_other+1) * [f0]
+f_read = (n_substeps_other + 1) * [f0]
 
 while participant.is_coupling_ongoing():
     if participant.is_action_required(precice.action_write_iteration_checkpoint()):
@@ -187,9 +187,10 @@ while participant.is_coupling_ongoing():
     # store result of this substep to buffer
     write_data = connecting_spring.k * u_new
     write_buffer[write_data_ids[substep]] = write_data
+    substep += 1
 
     # write n_substeps_this samples to other participant
-    if substep+1 == n_substeps_this:  # this time step concludes window. Write data
+    if substep == n_substeps_this:  # this time step concludes window. Write data
         for id, data in write_buffer.items():
             participant.write_scalar_data(id, vertex_id, data)
 
@@ -213,7 +214,6 @@ while participant.is_coupling_ongoing():
         v = v_new
         a = a_new
         t = t_new
-        substep += 1
         # write data to buffers
         u_write.append(u)
         t_write.append(t)
