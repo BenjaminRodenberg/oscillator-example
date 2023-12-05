@@ -165,32 +165,30 @@ while participant.is_coupling_ongoing():
 
         participant.mark_action_fulfilled(precice.action_write_iteration_checkpoint())
 
-    # implementation of waveform iteration in adapter
-
-
+    # read n_substeps_other samples that will be associated with t_read
     for i in range(n_substeps_other):
         f_read[i+1] = participant.read_scalar_data(read_data_ids[i], vertex_id)
 
+    # implementation of waveform iteration in adapter
+    if args.interpolation_scheme == ReadWaveformSchemes.LAGRANGE.value:
+        interpolant = lambda t: do_lagrange_interpolation(t, t_read, f_read)
+    elif args.interpolation_scheme == ReadWaveformSchemes.BSPLINE.value:
+        from scipy.interpolate import splrep, splev
+        b_spline_degree = args.interpolation_degree
+        tck = splrep(t_read, f_read, k=b_spline_degree)
+        interpolant = lambda t: splev(t, tck)
 
-    read_times = time_stepper.rhs_eval_points(dt)
-    f = len(read_times)*[None]
-    for i in range(len(read_times)):
-        if args.interpolation_scheme == ReadWaveformSchemes.LAGRANGE.value:
-            f[i] = do_lagrange_interpolation(t + read_times[i], t_read, f_read)
-        elif args.interpolation_scheme == ReadWaveformSchemes.BSPLINE.value:
-            from scipy.interpolate import splrep, splev
-            b_spline_degree = args.interpolation_degree
-            tck = splrep(t_read, f_read, k=b_spline_degree)
-            interpolant = lambda t: splev(t, tck)
-            f[i] = interpolant(t + read_times[i])
+    f = interpolant(t + time_stepper.rhs_eval_points(dt))
 
     # do time stepping
     u_new, v_new, a_new = time_stepper.do_step(u, v, a, f, dt)
     t_new = t + dt
 
+    # store result of this substep to buffer
     write_data = connecting_spring.k * u_new
     write_buffer[write_data_ids[substep]] = write_data
 
+    # write n_substeps_this samples to other participant
     if substep+1 == n_substeps_this:  # this time step concludes window. Write data
         for id, data in write_buffer.items():
             participant.write_scalar_data(id, vertex_id, data)
@@ -216,7 +214,6 @@ while participant.is_coupling_ongoing():
         a = a_new
         t = t_new
         substep += 1
-
         # write data to buffers
         u_write.append(u)
         t_write.append(t)

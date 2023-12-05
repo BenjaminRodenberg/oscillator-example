@@ -95,26 +95,6 @@ if __name__ == "__main__":
         help="Number of refinements by factor 2 for the time window size",
         type=int,
         default=5)
-    parser.add_argument(
-        "-sb",
-        "--base-time-step-refinement",
-        help="Base factor for time window size / time step size",
-        type=int,
-        nargs=n_supported_participants,
-        default=n_supported_participants*[1])
-    parser.add_argument(
-        "-s",
-        "--time-step-refinements",
-        help="Number of refinements by given factor for the time step size of each participant ( > 1 will result in subcycling)",
-        type=int,
-        default=1)
-    parser.add_argument(
-        "-sf",
-        "--time-step-refinement-factor",
-        help="Factor of time step refinements for each participant (use 1, if you want to use a fixed time step / time window relationship for one participant while refining the time steps for the other participant)",
-        type=int,
-        nargs=n_supported_participants,
-        default=n_supported_participants*[2])
     ## add solver specific arguments below, if needed
     parser.add_argument(
         "-tss",
@@ -128,8 +108,8 @@ if __name__ == "__main__":
         "--interpolation-scheme",
         help=f"Interpolation scheme being used.",
         type=str,
-        choices=[ReadWaveformSchemes.LAGRANGE_LINEAR.value, ReadWaveformSchemes.HERMITE_CUBIC.value],
-        default=ReadWaveformSchemes.LAGRANGE_LINEAR.value)
+        choices=[ReadWaveformSchemes.LAGRANGE.value, ReadWaveformSchemes.HERMITE.value],
+        default=ReadWaveformSchemes.LAGRANGE.value)
     args = parser.parse_args()
 
     df = pd.DataFrame()
@@ -174,7 +154,7 @@ if __name__ == "__main__":
     for dt in [args.base_time_window_size * 0.5**i for i in range(args.time_window_refinements)]:
         precice_config_params['time_window_size'] = dt
 
-        if ((args.interpolation_scheme == ReadWaveformSchemes.LAGRANGE_LINEAR.value) and (args.template_path != "precice-config-template.xml")) or ((args.interpolation_scheme == ReadWaveformSchemes.HERMITE_CUBIC.value) and (args.template_path != "precice-config-hermite-template.xml")):
+        if ((args.interpolation_scheme == ReadWaveformSchemes.LAGRANGE.value) and (args.template_path != "precice-config-template.xml")) or ((args.interpolation_scheme == ReadWaveformSchemes.HERMITE.value) and (args.template_path != "precice-config-hermite-template.xml")):
             raise Exception(f"Mismatch of provided template {args.template_path} and requested interpolation scheme {args.interpolation_scheme}")
 
         summary = do_run(args.template_path, precice_config_params, participants)

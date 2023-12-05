@@ -141,12 +141,7 @@ while participant.is_coupling_ongoing():
     else:
         dt = np.min([precice_dt, my_dt])
 
-    read_times = time_stepper.rhs_eval_points(dt)
-    f = len(read_times) * [None]
-
-    for i in range(len(read_times)):
-        read_data = participant.read_data(mesh_name, read_data_name, vertex_ids, read_times[i])
-        f[i] = read_data[0]
+    f = [participant.read_data(mesh_name, read_data_name, vertex_ids, t)[0] for t in time_stepper.rhs_eval_points(dt)]
 
     # do time stepping
     u_new, v_new, a_new = time_stepper.do_step(u, v, a, f, dt)

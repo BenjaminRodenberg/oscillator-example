@@ -17,16 +17,9 @@ class TimeSteppingSchemes(Enum):
 
 
 class ReadWaveformSchemes(Enum):
-    ZERO = "Zero"  # No interpolation. Just piecewise constant
-    LAGRANGE = "Lagrange"
-    LAGRANGE_LINEAR = "Lagrange_linear"  # Lagrange interpolation, first degree
-    LAGRANGE_QUADRATIC = "Lagrange_quadratic"  # Lagrange interpolation, second degree
-    HERMITE_CUBIC = "Hermite_cubic"  # Hermite interpolation, third degree
-    HERMITE = "Hermite"
-    BSPLINE = "B_spline"
-    BSPLINE_LINEAR = "B_spline_linear"  # Linear B-splines
-    BSPLINE_CUBIC = "B_spline_cubic"  # Cubic B-splines
-    BSPLINE_TEN = "B_spline_ten"  # tenth degree B-splines
+    LAGRANGE = "Lagrange"  # Lagrange interpolation, degree equals number of points
+    HERMITE = "Hermite"  # Hermite interpolation, third degree
+    BSPLINE = "BSpline"
 
 
 class ParticipantNames(Enum):
@@ -36,11 +29,7 @@ class ParticipantNames(Enum):
 
 class DataNames(Enum):
     FORCE_LEFT = "Force-Left"
-    FORCE_LEFT_1 = "Force-Left-1"
-    FORCE_LEFT_2 = "Force-Left-2"
     FORCE_RIGHT = "Force-Right"
-    FORCE_RIGHT_1 = "Force-Right-1"
-    FORCE_RIGHT_2 = "Force-Right-2"
 
 
 class MeshNames(Enum):

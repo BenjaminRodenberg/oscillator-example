@@ -22,7 +22,7 @@ class Participant(Enum):
 parser = argparse.ArgumentParser()
 parser.add_argument("participantName", help="Name of the solver.", type=str, choices=[p.value for p in Participant])
 parser.add_argument("-ts", "--time-stepping", help="Time stepping scheme being used.", type=str, choices=[s.value for s in TimeSteppingSchemes], default=TimeSteppingSchemes.NEWMARK_BETA.value)
-parser.add_argument("-is", "--interpolation-scheme", help=f"Interpolation scheme being used.", type=str, choices=[ReadWaveformSchemes.LAGRANGE_LINEAR.value, ReadWaveformSchemes.HERMITE_CUBIC.value], default=ReadWaveformSchemes.LAGRANGE_LINEAR.value)
+parser.add_argument("-is", "--interpolation-scheme", help=f"Interpolation scheme being used.", type=str, choices=[ReadWaveformSchemes.LAGRANGE.value, ReadWaveformSchemes.HERMITE.value], default=ReadWaveformSchemes.LAGRANGE.value)
 
 args = parser.parse_args()
 
@@ -75,7 +75,7 @@ vertex_id = participant.set_mesh_vertex(mesh_id, vertex)
 read_data_id = participant.get_data_id(read_data_name, mesh_id)
 write_data_id = participant.get_data_id(write_data_name, mesh_id)
 
-if(args.interpolation_scheme == ReadWaveformSchemes.HERMITE_CUBIC.value):
+if(args.interpolation_scheme == ReadWaveformSchemes.HERMITE.value):
     d_dt_write_data = connecting_spring.k * v0 * np.ones(num_vertices)
     d_dt_read_data_id = participant.get_data_id(f"d_dt_{read_data_name}", mesh_id)
     d_dt_write_data_id = participant.get_data_id(f"d_dt_{write_data_name}", mesh_id)
@@ -88,7 +88,7 @@ if participant.is_action_required(
         precice.action_write_initial_data()):
     participant.write_scalar_data(write_data_id, vertex_id, write_data)
 
-    if(args.interpolation_scheme == ReadWaveformSchemes.HERMITE_CUBIC.value):
+    if(args.interpolation_scheme == ReadWaveformSchemes.HERMITE.value):
         participant.write_scalar_data(d_dt_write_data_id, vertex_id, d_dt_write_data)
 
     participant.mark_action_fulfilled(precice.action_write_initial_data())
@@ -103,7 +103,7 @@ a = a0
 f_start = f_end = f0
 t = 0
 
-if(args.interpolation_scheme == ReadWaveformSchemes.HERMITE_CUBIC.value):
+if(args.interpolation_scheme == ReadWaveformSchemes.HERMITE.value):
     d_dt_f_start = d_dt_f_end = d_dt_f0
 
 if args.time_stepping == TimeSteppingSchemes.GENERALIZED_ALPHA.value:
@@ -143,7 +143,7 @@ while participant.is_coupling_ongoing():
         t_cp = t
         f_start = f_end  # force at the beginning of the window
 
-        if(args.interpolation_scheme == ReadWaveformSchemes.HERMITE_CUBIC.value):
+        if(args.interpolation_scheme == ReadWaveformSchemes.HERMITE.value):
             d_dt_f_start = d_dt_f_end  # time derivative of force at the beginning of the window
 
         # store data for plotting and postprocessing
@@ -154,25 +154,24 @@ while participant.is_coupling_ongoing():
             precice.action_write_iteration_checkpoint())
 
     read_data = participant.read_scalar_data(read_data_id, vertex_id)
-    if(args.interpolation_scheme == ReadWaveformSchemes.HERMITE_CUBIC.value):
+    if(args.interpolation_scheme == ReadWaveformSchemes.HERMITE.value):
         d_dt_read_data = participant.read_scalar_data(d_dt_read_data_id, vertex_id)
 
     # implementation of waveform iteration in adapter
     f_end = read_data  # preCICE v2 returns value at end of window by default
 
-    if(args.interpolation_scheme == ReadWaveformSchemes.HERMITE_CUBIC.value):
+    if(args.interpolation_scheme == ReadWaveformSchemes.HERMITE.value):
         d_dt_f_end = d_dt_read_data  # preCICE v2 returns value at end of window by default
 
     t_start = t_cp  # time at beginning of the window
     t_end = t_start + dt  # time at end of the window
 
-    read_times = time_stepper.rhs_eval_points(dt)
-    f = len(read_times)*[None]
-    for i in range(len(read_times)):
-        if(args.interpolation_scheme == ReadWaveformSchemes.LAGRANGE_LINEAR.value):
-            f[i] = do_linear_interpolation(t + read_times[i], (t_start, f_start), (t_end, f_end))
-        elif(args.interpolation_scheme == ReadWaveformSchemes.HERMITE_CUBIC.value):
-            f[i] = do_cubic_interpolation(t + read_times[i], (t_start, f_start, d_dt_f_start), (t_end, f_end, d_dt_f_end))
+    if(args.interpolation_scheme == ReadWaveformSchemes.LAGRANGE.value):
+        interpolant = lambda t: do_linear_interpolation(t, (t_start, f_start), (t_end, f_end))
+    elif(args.interpolation_scheme == ReadWaveformSchemes.HERMITE.value):
+        interpolant = lambda t: do_cubic_interpolation(t, (t_start, f_start, d_dt_f_start), (t_end, f_end, d_dt_f_end))
+
+    f = interpolant(t + time_stepper.rhs_eval_points(dt))
 
     # do time stepping
     u_new, v_new, a_new = time_stepper.do_step(u, v, a, f, dt)
@@ -180,10 +179,9 @@ while participant.is_coupling_ongoing():
 
     write_data = connecting_spring.k * u_new
 
-    participant.write_scalar_data(
-        write_data_id, vertex_id, write_data)
+    participant.write_scalar_data(write_data_id, vertex_id, write_data)
 
-    if(args.interpolation_scheme == ReadWaveformSchemes.HERMITE_CUBIC.value):
+    if(args.interpolation_scheme == ReadWaveformSchemes.HERMITE.value):
         d_dt_write_data = connecting_spring.k * v_new
         participant.write_scalar_data(d_dt_write_data_id, vertex_id, d_dt_write_data)
 
