@@ -191,6 +191,7 @@ if __name__ == "__main__":
             for p in participants:
                 p['kwargs']['--n-substeps-left'] = n_substeps_left
                 p['kwargs']['--n-substeps-right'] = n_substeps_right
+                p['kwargs']['--interpolation-degree'] = args.waveform_degree
 
             summary = do_run(args.template_path, precice_config_params, participants)
             df = pd.concat([df, pd.DataFrame(summary, index=[0])], ignore_index=True)
