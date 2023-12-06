@@ -85,7 +85,7 @@ df["errors1"] = abs(analytical_1(np.array(times))-np.array(positions_1))
 df["errors2"] = abs(analytical_2(np.array(times))-np.array(positions_2))
 df = df.set_index('times')
 metadata = f'''# time_step_size: {dt}
-# time stepping scheme: {args.time_stepping}
+# time stepping scheme: {args.time_stepping_scheme}
 '''
 
 participant_name = "Oscillator"
