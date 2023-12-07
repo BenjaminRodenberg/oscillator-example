@@ -47,7 +47,10 @@ class GeneralizedAlpha():
         a_new = 1.0 / (self.beta * dt**2) * (u_new - u - dt * v) - (1-2*self.beta) / (2*self.beta) * a
         v_new = v + dt * ((1-self.gamma)*a+self.gamma*a_new)
 
-        return u_new, v_new, a_new
+        if type(u) is np.ndarray:
+            return u_new, v_new, a_new
+        elif isinstance(u, numbers.Number):
+            return u_new[0], v_new[0], a_new[0]
 
 
 class RungeKutta4():
