@@ -6,30 +6,30 @@
     <sink type="stream" output="stdout"  filter= "%Severity% > warning" format="preCICE:%ColorizedSeverity% %Message%" enabled="true" />
   </log> -->
 
-  <data:scalar name="Force-Left" waveform-degree="{{waveform_degree}}" />
-  <data:scalar name="Force-Right" waveform-degree="{{waveform_degree}}" />
+  <data:scalar name="Displacement-Left" waveform-degree="{{waveform_degree}}" />
+  <data:scalar name="Displacement-Right" waveform-degree="{{waveform_degree}}" />
 
   <mesh name="Mass-Left-Mesh" dimensions="2">
-    <use-data name="Force-Left" />
-    <use-data name="Force-Right" />
+    <use-data name="Displacement-Left" />
+    <use-data name="Displacement-Right" />
   </mesh>
 
   <mesh name="Mass-Right-Mesh" dimensions="2">
-    <use-data name="Force-Left" />
-    <use-data name="Force-Right" />
+    <use-data name="Displacement-Left" />
+    <use-data name="Displacement-Right" />
   </mesh>
 
   <participant name="Mass-Left">
     <provide-mesh name="Mass-Left-Mesh" />
-    <write-data name="Force-Left" mesh="Mass-Left-Mesh" />
-    <read-data name="Force-Right" mesh="Mass-Left-Mesh" />
+    <write-data name="Displacement-Left" mesh="Mass-Left-Mesh" />
+    <read-data name="Displacement-Right" mesh="Mass-Left-Mesh" />
   </participant>
 
   <participant name="Mass-Right">
     <receive-mesh name="Mass-Left-Mesh" from="Mass-Left"/>
     <provide-mesh name="Mass-Right-Mesh" />
-    <write-data name="Force-Right" mesh="Mass-Right-Mesh" />
-    <read-data  name="Force-Left" mesh="Mass-Right-Mesh" />
+    <write-data name="Displacement-Right" mesh="Mass-Right-Mesh" />
+    <read-data  name="Displacement-Left" mesh="Mass-Right-Mesh" />
     <mapping:nearest-neighbor   direction="write" from="Mass-Right-Mesh" to="Mass-Left-Mesh" constraint="conservative" />
     <mapping:nearest-neighbor   direction="read"  from="Mass-Left-Mesh" to="Mass-Right-Mesh" constraint="conservative" />
   </participant>
@@ -41,10 +41,10 @@
     <max-time value="{{max_time | default(1)}}" />
     <time-window-size value="{{time_window_size}}" />
     <max-iterations value="200" />
-    <relative-convergence-measure data="Force-Left" mesh="Mass-Left-Mesh" limit="1e-10"/>
-    <relative-convergence-measure data="Force-Right" mesh="Mass-Left-Mesh" limit="1e-10"/>
-    <exchange data="Force-Left" mesh="Mass-Left-Mesh" from="Mass-Left" to="Mass-Right" initialize="true" substeps="{{substeps}}"/>
-    <exchange data="Force-Right" mesh="Mass-Left-Mesh" from="Mass-Right" to="Mass-Left" initialize="true" substeps="{{substeps}}"/>
+    <relative-convergence-measure data="Displacement-Left" mesh="Mass-Left-Mesh" limit="1e-10"/>
+    <relative-convergence-measure data="Displacement-Right" mesh="Mass-Left-Mesh" limit="1e-10"/>
+    <exchange data="Displacement-Left" mesh="Mass-Left-Mesh" from="Mass-Left" to="Mass-Right" initialize="true" substeps="{{substeps}}"/>
+    <exchange data="Displacement-Right" mesh="Mass-Left-Mesh" from="Mass-Right" to="Mass-Left" initialize="true" substeps="{{substeps}}"/>
   </coupling-scheme:parallel-implicit>
 
 </precice-configuration>

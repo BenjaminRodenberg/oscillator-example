@@ -42,10 +42,10 @@ if participant_name == Participant.MASS_LEFT.value:
     n_substeps_other = args.n_substeps_right
 
     for i in range(n_substeps_this):
-        write_data_names.append(f"Force-Left-{i+1}")
+        write_data_names.append(f"Displacement-Left-{i+1}")
 
     for i in range(n_substeps_other):
-        read_data_names.append(f"Force-Right-{i+1}")
+        read_data_names.append(f"Displacement-Right-{i+1}")
 
     mesh_name = 'Mass-Left-Mesh'
 
@@ -60,10 +60,10 @@ elif participant_name == Participant.MASS_RIGHT.value:
     n_substeps_other = args.n_substeps_left
 
     for i in range(n_substeps_this):
-        write_data_names.append(f"Force-Right-{i+1}")
+        write_data_names.append(f"Displacement-Right-{i+1}")
 
     for i in range(n_substeps_other):
-        read_data_names.append(f"Force-Left-{i+1}")
+        read_data_names.append(f"Displacement-Left-{i+1}")
 
     mesh_name = 'Mass-Right-Mesh'
 
@@ -93,7 +93,7 @@ dimensions = participant.get_dimensions()
 
 vertex = np.zeros(dimensions)
 read_data = np.zeros(num_vertices)
-write_data = connecting_spring.k * u0 * np.ones(num_vertices)
+write_data = u0 * np.ones(num_vertices)
 
 vertex_id = participant.set_mesh_vertex(mesh_id, vertex)
 read_data_ids = [participant.get_data_id(read_data_name, mesh_id) for read_data_name in read_data_names]
@@ -147,7 +147,7 @@ t_write = [t]
 
 substep = 1
 write_buffer = {}  # internal buffer for write data until final advance of window is called
-f_read = (n_substeps_other + 1) * [f0]
+u_read = (n_substeps_other + 1) * [other_mass.u0]
 
 while participant.is_coupling_ongoing():
     if participant.is_action_required(precice.action_write_iteration_checkpoint()):
@@ -155,7 +155,7 @@ while participant.is_coupling_ongoing():
         v_cp = v
         a_cp = a
         t_cp = t
-        f_read[0] = f_read[-1]  # force at the beginning of the new window is force at end of last window
+        u_read[0] = u_read[-1]  # force at the beginning of the new window is force at end of last window
         t_read = [t + i*other_dt for i in range(n_substeps_other+1)]
         substep = 0
 
@@ -167,25 +167,25 @@ while participant.is_coupling_ongoing():
 
     # read n_substeps_other samples that will be associated with t_read
     for i in range(n_substeps_other):
-        f_read[i+1] = participant.read_scalar_data(read_data_ids[i], vertex_id)
+        u_read[i+1] = participant.read_scalar_data(read_data_ids[i], vertex_id)
 
     # implementation of waveform iteration in adapter
     if args.interpolation_scheme == ReadWaveformSchemes.LAGRANGE.value:
-        interpolant = lambda t: do_lagrange_interpolation(t, t_read, f_read)
+        interpolant = lambda t: do_lagrange_interpolation(t, t_read, u_read)
     elif args.interpolation_scheme == ReadWaveformSchemes.BSPLINE.value:
         from scipy.interpolate import splrep, splev
         b_spline_degree = args.interpolation_degree
-        tck = splrep(t_read, f_read, k=b_spline_degree)
+        tck = splrep(t_read, u_read, k=b_spline_degree)
         interpolant = lambda t: splev(t, tck)
 
-    f = interpolant(t + time_stepper.rhs_eval_points(dt))
+    f = connecting_spring.k * interpolant(t + time_stepper.rhs_eval_points(dt))
 
     # do time stepping
     u_new, v_new, a_new = time_stepper.do_step(u, v, a, f, dt)
     t_new = t + dt
 
     # store result of this substep to buffer
-    write_data = connecting_spring.k * u_new
+    write_data = u_new
     write_buffer[write_data_ids[substep]] = write_data
     substep += 1
 

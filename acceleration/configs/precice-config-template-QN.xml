@@ -8,48 +8,48 @@
 
   <solver-interface dimensions="2" >
 
-    {% for force_left in forces_left -%}
-    <data:scalar name="{{force_left}}" />
+    {% for displacement_left in displacements_left -%}
+    <data:scalar name="{{displacement_left}}" />
     {% endfor -%}
-    {% for force_right in forces_right -%}
-    <data:scalar name="{{force_right}}" />
+    {% for displacement_right in displacements_right -%}
+    <data:scalar name="{{displacement_right}}" />
     {% endfor %}
     <mesh name="Mass-Left-Mesh">
-      {%- for force_left in forces_left %}
-      <use-data name="{{force_left}}" />
+      {%- for displacement_left in displacements_left %}
+      <use-data name="{{displacement_left}}" />
       {%- endfor %}
-      {%- for force_right in forces_right %}
-      <use-data name="{{force_right}}" />
+      {%- for displacement_right in displacements_right %}
+      <use-data name="{{displacement_right}}" />
       {%- endfor %}
     </mesh>
 
     <mesh name="Mass-Right-Mesh">
-      {%- for force_left in forces_left %}
-      <use-data name="{{force_left}}" />
+      {%- for displacement_left in displacements_left %}
+      <use-data name="{{displacement_left}}" />
       {%- endfor %}
-      {%- for force_right in forces_right %}
-      <use-data name="{{force_right}}" />
+      {%- for displacement_right in displacements_right %}
+      <use-data name="{{displacement_right}}" />
       {%- endfor %}
     </mesh>
 
     <participant name="Mass-Left">
       <use-mesh name="Mass-Left-Mesh" provide="yes"/>
-      {%- for force_left in forces_left %}
-      <write-data name="{{force_left}}" mesh="Mass-Left-Mesh" />
+      {%- for displacement_left in displacements_left %}
+      <write-data name="{{displacement_left}}" mesh="Mass-Left-Mesh" />
       {%- endfor %}
-      {%- for force_right in forces_right %}
-      <read-data  name="{{force_right}}" mesh="Mass-Left-Mesh" />
+      {%- for displacement_right in displacements_right %}
+      <read-data  name="{{displacement_right}}" mesh="Mass-Left-Mesh" />
       {%- endfor %}
     </participant>
 
     <participant name="Mass-Right">
       <use-mesh name="Mass-Left-Mesh" from="Mass-Left"/>
       <use-mesh name="Mass-Right-Mesh" provide="yes"/>
-      {%- for force_right in forces_right %}
-      <write-data name="{{force_right}}" mesh="Mass-Right-Mesh" />
+      {%- for displacement_right in displacements_right %}
+      <write-data name="{{displacement_right}}" mesh="Mass-Right-Mesh" />
       {%- endfor %}
-      {%- for force_left in forces_left %}
-      <read-data  name="{{force_left}}" mesh="Mass-Right-Mesh" />
+      {%- for displacement_left in displacements_left %}
+      <read-data  name="{{displacement_left}}" mesh="Mass-Right-Mesh" />
       {%- endfor %}
       <mapping:nearest-neighbor   direction="write" from="Mass-Right-Mesh" to="Mass-Left-Mesh" constraint="conservative" />
       <mapping:nearest-neighbor   direction="read"  from="Mass-Left-Mesh" to="Mass-Right-Mesh" constraint="conservative" />
@@ -62,27 +62,27 @@
       <max-time value="1" />
       <time-window-size value="{{time_window_size}}" />
       <max-iterations value="200" />
-      {%- for force_left in forces_left %}
-      <min-iteration-convergence-measure min-iterations="1" data="{{force_left}}" mesh="Mass-Left-Mesh"/>
+      {%- for displacement_left in displacements_left %}
+      <min-iteration-convergence-measure min-iterations="1" data="{{displacement_left}}" mesh="Mass-Left-Mesh"/>
       {%- endfor %}
-      {%- for force_left in forces_left %}
-      <relative-convergence-measure data="{{force_left}}" mesh="Mass-Left-Mesh" limit="{{convergence_limit}}"/>
+      {%- for displacement_left in displacements_left %}
+      <relative-convergence-measure data="{{displacement_left}}" mesh="Mass-Left-Mesh" limit="{{convergence_limit}}"/>
       {%- endfor %}
-      {%- for force_right in forces_right %}
-      <relative-convergence-measure data="{{force_right}}" mesh="Mass-Left-Mesh" limit="{{convergence_limit}}"/>
+      {%- for displacement_right in displacements_right %}
+      <relative-convergence-measure data="{{displacement_right}}" mesh="Mass-Left-Mesh" limit="{{convergence_limit}}"/>
       {%- endfor %}
-      {%- for force_left in forces_left %}
-      <exchange data="{{force_left}}" mesh="Mass-Left-Mesh" from="Mass-Left" to="Mass-Right" initialize="true"/>
+      {%- for displacement_left in displacements_left %}
+      <exchange data="{{displacement_left}}" mesh="Mass-Left-Mesh" from="Mass-Left" to="Mass-Right" initialize="true"/>
       {%- endfor %}
-      {%- for force_right in forces_right %}
-      <exchange data="{{force_right}}" mesh="Mass-Left-Mesh" from="Mass-Right" to="Mass-Left" initialize="true"/>
+      {%- for displacement_right in displacements_right %}
+      <exchange data="{{displacement_right}}" mesh="Mass-Left-Mesh" from="Mass-Right" to="Mass-Left" initialize="true"/>
       {%- endfor %}
       <acceleration:IQN-ILS>
-        {%- for force_left in forces_left %}
-        <data name="{{force_left}}" mesh="Mass-Left-Mesh" />
+        {%- for displacement_left in displacements_left %}
+        <data name="{{displacement_left}}" mesh="Mass-Left-Mesh" />
         {%- endfor %}
-        {%- for force_right in forces_right %}
-        <data name="{{force_right}}" mesh="Mass-Left-Mesh"/>
+        {%- for displacement_right in displacements_right %}
+        <data name="{{displacement_right}}" mesh="Mass-Left-Mesh"/>
         {%- endfor %}
         <initial-relaxation value="1.0"/>
         <max-used-iterations value="20"/>

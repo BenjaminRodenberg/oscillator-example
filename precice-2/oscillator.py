@@ -39,8 +39,8 @@ args = parser.parse_args()
 participant_name = args.participantName
 
 if participant_name == Participant.MASS_LEFT.value:
-    write_data_name = 'Force-Left'
-    read_data_name = 'Force-Right'
+    write_data_name = 'Displacement-Left'
+    read_data_name = 'Displacement-Right'
     mesh_name = 'Mass-Left-Mesh'
 
     this_mass = problemDefinition.MassLeft
@@ -49,8 +49,8 @@ if participant_name == Participant.MASS_LEFT.value:
     other_mass = problemDefinition.MassRight
 
 elif participant_name == Participant.MASS_RIGHT.value:
-    read_data_name = 'Force-Left'
-    write_data_name = 'Force-Right'
+    read_data_name = 'Displacement-Left'
+    write_data_name = 'Displacement-Right'
     mesh_name = 'Mass-Right-Mesh'
 
     this_mass = problemDefinition.MassRight
@@ -79,7 +79,7 @@ dimensions = participant.get_dimensions()
 
 vertex = np.zeros(dimensions)
 read_data = np.zeros(num_vertices)
-write_data = connecting_spring.k * u0 * np.ones(num_vertices)
+write_data = u0 * np.ones(num_vertices)
 
 vertex_id = participant.set_mesh_vertex(mesh_id, vertex)
 read_data_id = participant.get_data_id(read_data_name, mesh_id)
@@ -146,13 +146,13 @@ while participant.is_coupling_ongoing():
             precice.action_write_iteration_checkpoint())
 
     read_data = participant.read_scalar_data(read_data_id, vertex_id)
-    f = read_data
+    f = connecting_spring.k * read_data
 
     # do time stepping
     u_new, v_new, a_new = time_stepper.do_step(u, v, a, f, dt)
     t_new = t + dt
 
-    write_data = connecting_spring.k * u_new
+    write_data = u_new
 
     participant.write_scalar_data(
         write_data_id, vertex_id, write_data)

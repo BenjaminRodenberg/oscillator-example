@@ -25,7 +25,8 @@ class GeneralizedAlpha():
         return np.array([(1-self.alpha_f) * dt])
 
     def do_step(self, u, v, a, f, dt) -> Tuple[float, float, float]:
-        if type(f) is list:  # if f is list, turn it into a number
+        if type(f) is list or type(f) is np.ndarray:  # if f is list, turn it into a number
+            assert(len(f) == 1)
             f = f[0]
 
         m = 3*[None]
@@ -47,11 +48,7 @@ class GeneralizedAlpha():
         a_new = 1.0 / (self.beta * dt**2) * (u_new - u - dt * v) - (1-2*self.beta) / (2*self.beta) * a
         v_new = v + dt * ((1-self.gamma)*a+self.gamma*a_new)
 
-        if type(u) is np.ndarray:
-            return u_new, v_new, a_new
-        elif isinstance(u, numbers.Number):
-            return u_new[0], v_new[0], a_new[0]
-
+        return u_new, v_new, a_new
 
 class RungeKutta4():
     a = np.array([[0,   0,   0,   0],

@@ -29,8 +29,8 @@ args = parser.parse_args()
 participant_name = args.participantName
 
 if participant_name == Participant.MASS_LEFT.value:
-    write_data_name = 'Force-Left'
-    read_data_name = 'Force-Right'
+    write_data_name = 'Displacement-Left'
+    read_data_name = 'Displacement-Right'
     mesh_name = 'Mass-Left-Mesh'
 
     this_mass = problemDefinition.MassLeft
@@ -39,8 +39,8 @@ if participant_name == Participant.MASS_LEFT.value:
     other_mass = problemDefinition.MassRight
 
 elif participant_name == Participant.MASS_RIGHT.value:
-    read_data_name = 'Force-Left'
-    write_data_name = 'Force-Right'
+    read_data_name = 'Displacement-Left'
+    write_data_name = 'Displacement-Right'
     mesh_name = 'Mass-Right-Mesh'
 
     this_mass = problemDefinition.MassRight
@@ -53,7 +53,7 @@ else:
 
 mass = this_mass.m
 stiffness = this_spring.k + connecting_spring.k
-u0, v0, f0, d_dt_f0 = this_mass.u0, this_mass.v0, connecting_spring.k * other_mass.u0, connecting_spring.k * other_mass.v0
+u0, v0, f0 = this_mass.u0, this_mass.v0, connecting_spring.k * other_mass.u0
 
 num_vertices = 1  # Number of vertices
 
@@ -69,14 +69,14 @@ dimensions = participant.get_dimensions()
 
 vertex = np.zeros(dimensions)
 read_data = np.zeros(num_vertices)
-write_data = connecting_spring.k * u0 * np.ones(num_vertices)
+write_data = u0 * np.ones(num_vertices)
 
 vertex_id = participant.set_mesh_vertex(mesh_id, vertex)
 read_data_id = participant.get_data_id(read_data_name, mesh_id)
 write_data_id = participant.get_data_id(write_data_name, mesh_id)
 
 if(args.interpolation_scheme == ReadWaveformSchemes.HERMITE.value):
-    d_dt_write_data = connecting_spring.k * v0 * np.ones(num_vertices)
+    d_dt_write_data = v0 * np.ones(num_vertices)
     d_dt_read_data_id = participant.get_data_id(f"d_dt_{read_data_name}", mesh_id)
     d_dt_write_data_id = participant.get_data_id(f"d_dt_{write_data_name}", mesh_id)
 
@@ -100,11 +100,11 @@ a0 = (f0 - stiffness * u0) / mass
 u = u0
 v = v0
 a = a0
-f_start = f_end = f0
+u_start = u_end = other_mass.u0
 t = 0
 
 if(args.interpolation_scheme == ReadWaveformSchemes.HERMITE.value):
-    d_dt_f_start = d_dt_f_end = d_dt_f0
+    d_dt_u_start = d_dt_u_end = other_mass.v0
 
 if args.time_stepping == TimeSteppingSchemes.GENERALIZED_ALPHA.value:
     time_stepper = timeSteppers.GeneralizedAlpha(stiffness=stiffness, mass=mass, alpha_f=0.4, alpha_m=0.2)
@@ -127,7 +127,6 @@ else:
         f"Invalid time stepping scheme {args.time_stepping}. Please use one of {[ts.value for ts in TimeSteppingSchemes]}")
 
 
-cpl_forces = []
 positions = []
 times = []
 
@@ -141,10 +140,10 @@ while participant.is_coupling_ongoing():
         v_cp = v
         a_cp = a
         t_cp = t
-        f_start = f_end  # force at the beginning of the window
+        u_start = u_end  # displacement at the beginning of the window
 
         if(args.interpolation_scheme == ReadWaveformSchemes.HERMITE.value):
-            d_dt_f_start = d_dt_f_end  # time derivative of force at the beginning of the window
+            d_dt_u_start = d_dt_u_end  # time derivative of displacement at the beginning of the window
 
         # store data for plotting and postprocessing
         positions += u_write
@@ -158,31 +157,31 @@ while participant.is_coupling_ongoing():
         d_dt_read_data = participant.read_scalar_data(d_dt_read_data_id, vertex_id)
 
     # implementation of waveform iteration in adapter
-    f_end = read_data  # preCICE v2 returns value at end of window by default
+    u_end = read_data  # preCICE v2 returns value at end of window by default
 
     if(args.interpolation_scheme == ReadWaveformSchemes.HERMITE.value):
-        d_dt_f_end = d_dt_read_data  # preCICE v2 returns value at end of window by default
+        d_dt_u_end = d_dt_read_data  # preCICE v2 returns value at end of window by default
 
     t_start = t_cp  # time at beginning of the window
     t_end = t_start + dt  # time at end of the window
 
     if(args.interpolation_scheme == ReadWaveformSchemes.LAGRANGE.value):
-        interpolant = lambda t: do_linear_interpolation(t, (t_start, f_start), (t_end, f_end))
+        interpolant = lambda t: do_linear_interpolation(t, (t_start, u_start), (t_end, u_end))
     elif(args.interpolation_scheme == ReadWaveformSchemes.HERMITE.value):
-        interpolant = lambda t: do_cubic_interpolation(t, (t_start, f_start, d_dt_f_start), (t_end, f_end, d_dt_f_end))
+        interpolant = lambda t: do_cubic_interpolation(t, (t_start, u_start, d_dt_u_start), (t_end, u_end, d_dt_u_end))
 
-    f = interpolant(t + time_stepper.rhs_eval_points(dt))
+    f = connecting_spring.k * interpolant(t + time_stepper.rhs_eval_points(dt))
 
     # do time stepping
     u_new, v_new, a_new = time_stepper.do_step(u, v, a, f, dt)
     t_new = t + dt
 
-    write_data = connecting_spring.k * u_new
+    write_data = u_new
 
     participant.write_scalar_data(write_data_id, vertex_id, write_data)
 
     if(args.interpolation_scheme == ReadWaveformSchemes.HERMITE.value):
-        d_dt_write_data = connecting_spring.k * v_new
+        d_dt_write_data = v_new
         participant.write_scalar_data(d_dt_write_data_id, vertex_id, d_dt_write_data)
 
     precice_dt = participant.advance(dt)

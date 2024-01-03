@@ -144,8 +144,8 @@ if __name__ == "__main__":
     precice_config_params = {
         'time_window_size': None,  # will be defined later
         'max_time': args.max_time,
-        'forces_left': None,  # will be defined later
-        'forces_right': None,  # will be defined later
+        'displacements_left': None,  # will be defined later
+        'displacements_right': None,  # will be defined later
     }
 
     root_folder = Path(__file__).parent.absolute()
@@ -185,8 +185,8 @@ if __name__ == "__main__":
             n_substeps_right = args.base_time_step_refinement[1]*args.time_step_refinement_factor[1]**refinement
 
             precice_config_params['time_window_size'] = dt
-            precice_config_params['forces_left'] = [f"Force-Left-{i}" for i in range(1, n_substeps_left+1)]
-            precice_config_params['forces_right'] = [f"Force-Right-{i}" for i in range(1, n_substeps_right+1)]
+            precice_config_params['displacements_left'] = [f"Displacement-Left-{i}" for i in range(1, n_substeps_left+1)]
+            precice_config_params['displacements_right'] = [f"Displacement-Right-{i}" for i in range(1, n_substeps_right+1)]
 
             for p in participants:
                 p['kwargs']['--n-substeps-left'] = n_substeps_left

@@ -6,7 +6,11 @@ def do_linear_interpolation(time, ty_start, ty_end):
     t_end, y_end = ty_end
     dt = t_end - t_start
     eps = 10**-6 * dt
-    assert(t_start - eps <= time <= t_end + eps)
+    if len(time) == 1:
+        assert(t_start - eps <= time <= t_end + eps)
+    elif len(time) > 1:
+        for t in time:
+            assert(t_start - eps <= t <= t_end + eps)
 
     t = time - t_start  # time relative to beginning
     return (t/dt) * y_end + (dt-t)/dt * y_start

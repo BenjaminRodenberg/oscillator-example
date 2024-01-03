@@ -39,8 +39,8 @@ args = parser.parse_args()
 participant_name = args.participantName
 
 if participant_name == Participant.MASS_LEFT.value:
-    write_data_name = 'Force-Left'
-    read_data_name = 'Force-Right'
+    write_data_name = 'Displacement-Left'
+    read_data_name = 'Displacement-Right'
     mesh_name = 'Mass-Left-Mesh'
 
     this_mass = problemDefinition.MassLeft
@@ -49,8 +49,8 @@ if participant_name == Participant.MASS_LEFT.value:
     other_mass = problemDefinition.MassRight
 
 elif participant_name == Participant.MASS_RIGHT.value:
-    read_data_name = 'Force-Left'
-    write_data_name = 'Force-Right'
+    read_data_name = 'Displacement-Left'
+    write_data_name = 'Displacement-Right'
     mesh_name = 'Mass-Right-Mesh'
 
     this_mass = problemDefinition.MassRight
@@ -78,7 +78,7 @@ dimensions = participant.get_mesh_dimensions(mesh_name)
 
 vertex = np.zeros(dimensions)
 read_data = np.zeros(num_vertices)
-write_data = connecting_spring.k * u0 * np.ones(num_vertices)
+write_data = u0 * np.ones(num_vertices)
 
 vertex_ids = [participant.set_mesh_vertex(mesh_name, vertex)]
 
@@ -141,13 +141,13 @@ while participant.is_coupling_ongoing():
     else:
         dt = np.min([precice_dt, my_dt])
 
-    f = [participant.read_data(mesh_name, read_data_name, vertex_ids, t)[0] for t in time_stepper.rhs_eval_points(dt)]
+    f = [connecting_spring.k * participant.read_data(mesh_name, read_data_name, vertex_ids, t)[0] for t in time_stepper.rhs_eval_points(dt)]
 
     # do time stepping
     u_new, v_new, a_new = time_stepper.do_step(u, v, a, f, dt)
     t_new = t + dt
 
-    write_data = [connecting_spring.k * u_new]
+    write_data = [u_new]
 
     participant.write_data(mesh_name, write_data_name, vertex_ids, write_data)
 

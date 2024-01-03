@@ -27,9 +27,6 @@ class ParticipantNames(Enum):
     MASS_RIGHT = "Mass-Right"
 
 
-class DataNames(Enum):
-    FORCE_LEFT = "Force-Left"
-    FORCE_RIGHT = "Force-Right"
 
 
 class MeshNames(Enum):

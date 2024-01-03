@@ -44,10 +44,10 @@ if participant_name == ParticipantNames.MASS_LEFT.value:
     time_stepping = args.time_stepping_left
 
     for i in range(n_substeps_this):
-        write_data_names.append(f"{DataNames.FORCE_LEFT.value}-{i+1}")
+        write_data_names.append(f"Displacement-Left-{i+1}")
 
     for i in range(n_substeps_other):
-        read_data_names.append(f"{DataNames.FORCE_RIGHT.value}-{i+1}")
+        read_data_names.append(f"Displacement-Right-{i+1}")
 
     mesh_name = MeshNames.MASS_LEFT_MESH.value
 
@@ -64,10 +64,10 @@ elif participant_name == ParticipantNames.MASS_RIGHT.value:
     time_stepping = args.time_stepping_right
 
     for i in range(n_substeps_this):
-        write_data_names.append(f"{DataNames.FORCE_RIGHT.value}-{i+1}")
+        write_data_names.append(f"Displacement-Right-{i+1}")
 
     for i in range(n_substeps_other):
-        read_data_names.append(f"{DataNames.FORCE_LEFT.value}-{i+1}")
+        read_data_names.append(f"Displacement-Left-{i+1}")
 
     mesh_name = MeshNames.MASS_RIGHT_MESH.value
 
@@ -131,7 +131,7 @@ for dt in dts:
 
     vertex = np.zeros(dimensions)
     read_data = np.zeros(num_vertices)
-    write_data = oscillator.SpringMiddle.k * u0 * np.ones(num_vertices)
+    write_data = u0 * np.ones(num_vertices)
 
     vertex_id = interface.set_mesh_vertex(mesh_id, vertex)
     read_data_ids = [interface.get_data_id(read_data_name, mesh_id) for read_data_name in read_data_names]
@@ -195,7 +195,7 @@ for dt in dts:
         fs[0] = f_start
 
         for i in range(n_substeps_other):
-            fs[i+1] = interface.read_scalar_data(read_data_ids[i], vertex_id)
+            fs[i+1] = oscillator.SpringMiddle.k * interface.read_scalar_data(read_data_ids[i], vertex_id)
 
         f_end = fs[-1]
 
@@ -215,7 +215,7 @@ for dt in dts:
 
         u_new, v_new, a_new = time_stepper.do_step(u, v, a, f, dt)
 
-        write_data = oscillator.SpringMiddle.k * u_new
+        write_data = u_new
 
         write_buffer[write_data_ids[substep]] = write_data
 
