@@ -169,25 +169,41 @@ if __name__ == "__main__":
         raise Exception(f"Currently only supports coupling of {n_supported_participants} participants")
 
     summary_file = root_folder / "convergence-studies" / f"{uuid.uuid4()}.csv"
-
-    for dt in [args.base_time_window_size * 0.5**i for i in range(args.time_window_refinements)]:
+    
+    #for dt in [args.base_time_window_size * (1/2)**i for i in range(args.time_window_refinements)]:
+    import numpy as np
+    
+    dts = np.array([10**(-i) * args.base_time_window_size * np.array([1, 1/2, 1/3, 1/4, 1/5, 1/6, 1/7, 1/8, 1/9, 1/12, 1/14, 1/16, 1/25]) for i in range(2)]).flatten()
+    # dts = np.array([10**(-i) * args.base_time_window_size * np.array([1/2, 1/3, 1/4, 1/5, 1/6, 1/7, 1/8, 1/9, 1/10, 1/11, 1/12, 1/13, 1/14, 1/15, 1/16, 1/17, 1/18, 1/19]) for i in range(2)]).flatten()
+    # dts = np.array([10**(-i) * args.base_time_window_size * np.array([1, 1/2, 1/3, 1/4, 1/5, 1/6, 1/7, 1/8, 1/9]) for i in range(3)]).flatten()
+    dts.sort()
+    
+    dts = dts[::-1]
+    
+    print(dts)
+    
+    for dt in dts:
         for refinement in range(args.time_step_refinements):
             precice_config_params['time_window_size'] = dt
             i = 0
+            too_small = False
+            too_small_boundary = [0.0005, 1e-5]
             for p in participants:
                 p['kwargs']['--n-substeps'] = args.base_time_step_refinement[i]*args.time_step_refinement_factor[i]**refinement
+                too_small = too_small or (dt / args.base_time_step_refinement[i]*args.time_step_refinement_factor[i]**refinement) < too_small_boundary[i]
                 i += 1
+                
+            if not too_small:
+                summary = do_run(args.template_path, precice_config_params, participants)
+                df = pd.concat([df, pd.DataFrame(summary, index=[0])], ignore_index=True)
 
-            summary = do_run(args.template_path, precice_config_params, participants)
-            df = pd.concat([df, pd.DataFrame(summary, index=[0])], ignore_index=True)
+                print(f"Write preliminary output to {summary_file}")
+                df.to_csv(summary_file)
 
-            print(f"Write preliminary output to {summary_file}")
-            df.to_csv(summary_file)
-
-            term_size = os.get_terminal_size()
-            print('-' * term_size.columns)
-            print(df)
-            print('-' * term_size.columns)
+                term_size = os.get_terminal_size()
+                print('-' * term_size.columns)
+                print(df)
+                print('-' * term_size.columns)
 
     df = df.set_index(["time window size"] + [f"time step size {p['name']}" for p in participants])
     print(f"Write final output to {summary_file}")
