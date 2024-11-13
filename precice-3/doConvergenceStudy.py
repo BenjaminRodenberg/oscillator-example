@@ -146,7 +146,7 @@ if __name__ == "__main__":
         {
             "name": "Mass-Left",  # identifier of this participant
             "folder": root_folder,  # root folder of this participant
-            "exec": ["python3", "oscillator.py"],  # how to execute the participant, e.g. python3 script.py
+            "exec": [".venv/bin/python3", "oscillator.py"],  # how to execute the participant, e.g. python3 script.py
             "params": ["Mass-Left"],  # list of positional arguments that will be used. Results in python3 script.py param1 ...
             "kwargs": {  # dict with keyword arguments that will be used. Results in python3 script.py param1 ... k1=v1 k2=v2 ...
                 '--time-stepping': args.time_stepping_scheme[0],
@@ -156,7 +156,7 @@ if __name__ == "__main__":
         {
             "name": "Mass-Right",
             "folder": root_folder,
-            "exec": ["python3", "oscillator.py"],
+            "exec": [".venv/bin/python3", "oscillator.py"],
             "params": ["Mass-Right"],
             "kwargs": {
                 '--time-stepping': args.time_stepping_scheme[1],
