@@ -8,6 +8,9 @@ import uuid
 import argparse
 import sys
 
+from io import TextIOWrapper
+from typing import TypedDict, List, Dict
+
 
 def do_run(participants):
     print(f"{datetime.datetime.now()}: Running ...")
@@ -17,7 +20,8 @@ def do_run(participants):
 
     for participant in participants:
         with open(participant["folder"] / participant['logfile'], "w") as outfile:
-            cmd = participant["exec"] + participant["params"] + [f"{keyword}={value}" for keyword, value in participant['kwargs'].items()]
+            cmd = participant["exec"] + participant["params"] + \
+                [f"{keyword}={value}" for keyword, value in participant['kwargs'].items()]
             print(cmd)
             p = subprocess.Popen(cmd,
                                  cwd=participant["folder"],
@@ -29,7 +33,8 @@ def do_run(participants):
 
     for participant in participants:
         if participant["proc"].returncode != 0:
-            raise Exception(f"Experiment failed for participant {participant['name']}. See logs {[p['logfile'] for p in participants]}.")
+            raise Exception(f"Experiment failed for participant {participant['name']}. See logs {
+                            [p['logfile'] for p in participants]}.")
 
     print("Done.")
     print("Postprocessing...")
@@ -66,22 +71,35 @@ if __name__ == "__main__":
         help="Number of refinements by factor 2 for the time step size",
         type=int,
         default=5)
-    ## add solver specific arguments below, if needed
+    # add solver specific arguments below, if needed
     parser.add_argument(
         "-tss",
         "--time-stepping-scheme",
         help="Define time stepping scheme used by each solver",
         type=str,
         nargs=n_supported_participants,
-        default=n_supported_participants*["Newmark_beta"])
+        default=n_supported_participants * ["Newmark_beta"])
+    parser.add_argument(
+        "-o",
+        "--out-filename",
+        help="Provide a file name. If no file name is provided a UUID will be generated as name. Abort if file already exists.",
+        type=str,
+    )
     args = parser.parse_args()
 
     df = pd.DataFrame()
 
     root_folder = Path(__file__).parent.absolute()
 
+    class Participant(TypedDict):
+        name: str
+        folder: Path
+        exec: List[str]
+        params: List[str]
+        kwargs: Dict[str, str | None]
+
     # Define how participants will be executed here
-    participants = [
+    participants: List[Participant] = [
         {
             "name": "Oscillator",  # identifier of this participant
             "folder": root_folder,  # root folder of this participant
@@ -97,7 +115,14 @@ if __name__ == "__main__":
     if len(participants) != n_supported_participants:
         raise Exception(f"Currently only supports coupling of {n_supported_participants} participants")
 
-    summary_file = root_folder / "convergence-studies" / f"{uuid.uuid4()}.csv"
+    summary_file = root_folder
+    if args.out_filename:  # use file name given by user
+        summary_file = summary_file / args.out_filename
+    else:  # no file name is given. Create UUID for file name
+        summary_file = summary_file / "convergence-studies" / f"{uuid.uuid4()}.csv"
+
+    if summary_file.is_file():
+        raise IOError(f"File {summary_file} already exists. Aborting.")
 
     for dt in [args.base_time_step_size * 0.5**i for i in range(args.time_step_refinements)]:
         i = 0
