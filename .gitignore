@@ -4,3 +4,5 @@
 **/*-events.json
 **/*-iterations.log
 **/*-convergence.log
+**/stdout*.log
+.venv

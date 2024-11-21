@@ -2,16 +2,17 @@ from __future__ import division
 
 import argparse
 import numpy as np
-import precice
-from enum import Enum
 import pandas as pd
 from pathlib import Path
 
-import problemDefinition
+import precice
+from enum import Enum
+from typing import Type
 
-from brot.enums import TimeSteppingSchemes
-import brot.timesteppers as timeSteppers
+from brot.timeSteppers import TimeStepper, TimeSteppingSchemes, GeneralizedAlpha, RungeKutta4, RadauIIA
+import brot.oscillator as problemDefinition
 
+from io import TextIOWrapper
 
 class Participant(Enum):
     MASS_LEFT = "Mass-Left"
@@ -38,6 +39,11 @@ args = parser.parse_args()
 
 participant_name = args.participantName
 
+this_mass: Type[problemDefinition.Mass]
+other_mass: Type[problemDefinition.Mass]
+this_spring: Type[problemDefinition.Spring]
+connecting_spring = problemDefinition.SpringMiddle
+
 if participant_name == Participant.MASS_LEFT.value:
     write_data_name = 'Displacement-Left'
     read_data_name = 'Displacement-Right'
@@ -45,7 +51,6 @@ if participant_name == Participant.MASS_LEFT.value:
 
     this_mass = problemDefinition.MassLeft
     this_spring = problemDefinition.SpringLeft
-    connecting_spring = problemDefinition.SpringMiddle
     other_mass = problemDefinition.MassRight
 
 elif participant_name == Participant.MASS_RIGHT.value:
@@ -55,7 +60,6 @@ elif participant_name == Participant.MASS_RIGHT.value:
 
     this_mass = problemDefinition.MassRight
     this_spring = problemDefinition.SpringRight
-    connecting_spring = problemDefinition.SpringMiddle
     other_mass = problemDefinition.MassLeft
 
 else:
@@ -96,31 +100,27 @@ v = v0
 a = a0
 t = 0
 
+time_stepper: TimeStepper
+
 if args.time_stepping == TimeSteppingSchemes.GENERALIZED_ALPHA.value:
-    time_stepper = timeSteppers.GeneralizedAlpha(stiffness=stiffness, mass=mass, alpha_f=0.4, alpha_m=0.2)
+    time_stepper = GeneralizedAlpha(stiffness=stiffness, mass=mass, alpha_f=0.4, alpha_m=0.2)
 elif args.time_stepping == TimeSteppingSchemes.NEWMARK_BETA.value:
-    time_stepper = timeSteppers.GeneralizedAlpha(stiffness=stiffness, mass=mass, alpha_f=0.0, alpha_m=0.0)
+    time_stepper = GeneralizedAlpha(stiffness=stiffness, mass=mass, alpha_f=0.0, alpha_m=0.0)
 elif args.time_stepping == TimeSteppingSchemes.RUNGE_KUTTA_4.value:
-    ode_system = np.array([
-        [0, mass],  # du
-        [-stiffness, 0],  # dv
-    ])
-    time_stepper = timeSteppers.RungeKutta4(ode_system=ode_system)
+    time_stepper = RungeKutta4(stiffness=stiffness, mass=mass)
 elif args.time_stepping == TimeSteppingSchemes.Radau_IIA.value:
-    ode_system = np.array([
-        [0, mass],  # du
-        [-stiffness, 0],  # dv
-    ])
-    time_stepper = timeSteppers.RadauIIA(ode_system=ode_system)
+    time_stepper = RadauIIA(stiffness=stiffness, mass=mass)
 else:
     raise Exception(
         f"Invalid time stepping scheme {args.time_stepping}. Please use one of {[ts.value for ts in TimeSteppingSchemes]}")
 
 
 positions = []
+velocities = []
 times = []
 
 u_write = [u]
+v_write = [v]
 t_write = [t]
 
 while participant.is_coupling_ongoing():
@@ -131,27 +131,42 @@ while participant.is_coupling_ongoing():
         t_cp = t
         # store data for plotting and postprocessing
         positions += u_write
+        velocities += v_write
         times += t_write
 
     # compute time step size for this time step
     precice_dt = participant.get_max_time_step_size()
-    dt_tol = 1e-13
-    if(abs(precice_dt - my_dt) < dt_tol):
-        dt = precice_dt
-    else:
-        dt = np.min([precice_dt, my_dt])
+    dt = np.min([precice_dt, my_dt])
 
-    f = [connecting_spring.k * participant.read_data(mesh_name, read_data_name, vertex_ids, t)[0] for t in time_stepper.rhs_eval_points(dt)]
+    def f(t: float) -> float: return connecting_spring.k * \
+        participant.read_data(mesh_name, read_data_name, vertex_ids, t)[0]
 
-    # do time stepping
+    # do time step, write data, and advance
     u_new, v_new, a_new = time_stepper.do_step(u, v, a, f, dt)
+
     t_new = t + dt
 
-    write_data = [u_new]
+    # RadauIIA time stepper provides dense output. Do multiple write calls per time step.
+    if isinstance(time_stepper, RadauIIA):
+        # create n samples_per_step of time stepping scheme. Degree of dense
+        # interpolating function is usually larger 1 and, therefore, we need
+        # multiple samples per step.
+        samples_per_step = 5
+        n_time_steps = len(time_stepper.dense_output.ts)  # number of time steps performed by adaptive time stepper
+        n_pseudo = samples_per_step * n_time_steps  # samples_per_step times no. time steps per window.
+        t_pseudo = 0
+        for i in range(n_pseudo):
+            # perform n_pseudo pseudosteps
+            dt_pseudo = dt / n_pseudo
+            t_pseudo += dt_pseudo
+            write_data = np.array([time_stepper.dense_output(t_pseudo)[0]])
+            participant.write_data(mesh_name, write_data_name, vertex_ids, write_data)
+            participant.advance(dt_pseudo)
 
-    participant.write_data(mesh_name, write_data_name, vertex_ids, write_data)
-
-    participant.advance(dt)
+    else:  # simple time stepping without dense output; only a single write call per time step
+        write_data = np.array([u_new])
+        participant.write_data(mesh_name, write_data_name, vertex_ids, write_data)
+        participant.advance(dt)
 
     if participant.requires_reading_checkpoint():
         u = u_cp
@@ -160,6 +175,7 @@ while participant.is_coupling_ongoing():
         t = t_cp
         # empty buffers for next window
         u_write = []
+        v_write = []
         t_write = []
 
     else:
@@ -170,16 +186,20 @@ while participant.is_coupling_ongoing():
 
         # write data to buffers
         u_write.append(u)
+        v_write.append(v)
         t_write.append(t)
 
 # store final result
 positions += u_write
+velocities += v_write
 times += t_write
 
 participant.finalize()
 
 df = pd.DataFrame()
 df["times"] = times
+df["position"] = positions
+df["velocity"] = velocities
 df["errors"] = abs(this_mass.u_analytical(np.array(times)) - np.array(positions))
 df = df.set_index('times')
 metadata = f'''# time_window_size: {precice_dt}
@@ -187,12 +207,13 @@ metadata = f'''# time_window_size: {precice_dt}
 # time stepping scheme: {args.time_stepping}
 '''
 
-errors_csv = Path(f"errors-{participant_name}.csv")
-errors_csv.unlink(missing_ok=True)
+output_csv = Path(f"output-{participant_name}.csv")
+output_csv.unlink(missing_ok=True)
 
 print("Error w.r.t analytical solution:")
 print(f"{my_dt},{df['errors'].max()}")
 
-with open(errors_csv, 'a') as f:
-    f.write(f"{metadata}")
-    df.to_csv(f)
+file: TextIOWrapper
+with open(output_csv, 'a') as file:
+    file.write(f"{metadata}")
+    df.to_csv(file)
