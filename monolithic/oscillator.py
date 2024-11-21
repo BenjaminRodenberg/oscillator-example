@@ -21,12 +21,11 @@ parser.add_argument("-dt", "--time-step-size", help=f"Time step size being used"
 args = parser.parse_args()
 
 M = oscillator.M
-M_inv = oscillator.M_inv
 K = oscillator.K
 
 u0 = np.array([oscillator.MassLeft.u0, oscillator.MassRight.u0])
 v0 = np.array([oscillator.MassLeft.v0, oscillator.MassRight.v0])
-a0 = -K.dot(M_inv.dot(u0))
+a0 = -K.dot(np.linalg.inv(M).dot(u0))
 
 analytical_1 = oscillator.MassLeft.u_analytical
 analytical_2 = oscillator.MassRight.u_analytical
