@@ -4,9 +4,9 @@ import argparse
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from brot.enums import TimeSteppingSchemes
-from brot.timeSteppersMonolithic import GeneralizedAlpha, RungeKutta4, RadauIIA
-import brot.oscillator as oscillator
+
+from brot.timeSteppersMonolithic import TimeStepper, TimeSteppingSchemes, GeneralizedAlpha, RungeKutta4, RadauIIA
+import brot.oscillator as problemDefinition
 
 from io import TextIOWrapper
 from numpy.typing import ArrayLike
@@ -20,19 +20,26 @@ parser.add_argument("-tss",
 parser.add_argument("-dt", "--time-step-size", help=f"Time step size being used", type=float, default=0.04)
 args = parser.parse_args()
 
-M = oscillator.M
-K = oscillator.K
+M = problemDefinition.M
+K = problemDefinition.K
 
-u0 = np.array([oscillator.MassLeft.u0, oscillator.MassRight.u0])
-v0 = np.array([oscillator.MassLeft.v0, oscillator.MassRight.v0])
+mass_left = problemDefinition.MassLeft
+mass_right = problemDefinition.MassRight
+
+u0 = np.array([mass_left.u0, mass_right.u0])
+v0 = np.array([mass_left.v0, mass_right.v0])
 a0 = -K.dot(np.linalg.inv(M).dot(u0))
 
-analytical_1 = oscillator.MassLeft.u_analytical
-analytical_2 = oscillator.MassRight.u_analytical
+# Initial Conditions
+u = u0
+v = v0
+a = a0
+t = 0
 
 T = 1
 
-# Generalized Alpha Parameters
+time_stepper: TimeStepper
+
 if args.time_stepping_scheme == TimeSteppingSchemes.GENERALIZED_ALPHA.value:
     time_stepper = GeneralizedAlpha(stiffness=K, mass=M, alpha_f=0.4, alpha_m=0.2)
 elif args.time_stepping_scheme == TimeSteppingSchemes.NEWMARK_BETA.value:
@@ -45,13 +52,8 @@ else:
     raise Exception(f"Invalid time stepping scheme {args.time_stepping_scheme}. Please use one of {
                     [ts.value for ts in TimeSteppingSchemes]}")
 
-u = u0
-v = v0
-a = a0
-t = 0
-
-positions_1 = [u[0]]
-positions_2 = [u[1]]
+positions_left = [u[0]]
+positions_right = [u[1]]
 times = [t]
 
 dt = args.time_step_size
@@ -70,28 +72,28 @@ while t < T:
 
     e = u[0]**2 + u[1]**2 + (u[1] - u[0])**2 + v[0]**2 + v[1]**2
 
-    positions_1.append(u[0])
-    positions_2.append(u[1])
+    positions_left.append(u[0])
+    positions_right.append(u[1])
     times.append(t)
 
 df = pd.DataFrame()
 df["times"] = times
-df["errors1"] = abs(analytical_1(np.array(times)) - np.array(positions_1))
-df["errors2"] = abs(analytical_2(np.array(times)) - np.array(positions_2))
+df["error Mass-Left"] = abs(mass_left.u_analytical(np.array(times)) - np.array(positions_left))
+df["error Mass-Right"] = abs(mass_right.u_analytical(np.array(times)) - np.array(positions_right))
 df = df.set_index('times')
 metadata = f'''# time_step_size: {dt}
 # time stepping scheme: {args.time_stepping_scheme}
 '''
 
-participant_name = "Oscillator"
+participant_name = "Monolithic"
 
-errors_csv = Path(f"errors-{participant_name}.csv")
-errors_csv.unlink(missing_ok=True)
+output_csv = Path(f"output-{participant_name}.csv")
+output_csv.unlink(missing_ok=True)
 
 print("Error w.r.t analytical solution:")
-print(f"{dt},{df['errors1'].max()},,{df['errors2'].max()}")
+print(f"{dt},{df['error Mass-Left'].max()},,{df['error Mass-Right'].max()}")
 
 file: TextIOWrapper
-with open(errors_csv, 'a') as file:
+with open(output_csv, 'a') as file:
     file.write(f"{metadata}")
     df.to_csv(file)

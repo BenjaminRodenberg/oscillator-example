@@ -43,7 +43,7 @@ if __name__ == "__main__":
 
     # Define how participants will be executed here
     participants: Participants = {
-        "Oscillator": Participant("Oscillator", root_folder, [".venv/bin/python3", "oscillator.py"], [], {'--time-stepping': args.time_stepping_scheme[0], '--time-step-size': None})
+        "Monolithic": Participant("Monolithic", root_folder, [".venv/bin/python3", "oscillator.py"], [], {'--time-stepping': args.time_stepping_scheme[0], '--time-step-size': None})
     }
 
     if len(participants) != n_supported_participants:
