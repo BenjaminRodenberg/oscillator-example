@@ -2,9 +2,6 @@ from pathlib import Path
 import uuid
 import argparse
 
-import pandas as pd
-import os
-
 from prepesthel.participant import Participant, Participants
 from prepesthel.runner import run, postproc
 from prepesthel.io import Results

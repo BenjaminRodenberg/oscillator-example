@@ -67,7 +67,7 @@ else:
 
 mass = this_mass.m
 stiffness = this_spring.k + connecting_spring.k
-u0, v0, f0, d_dt_f0 = this_mass.u0, this_mass.v0, connecting_spring.k * other_mass.u0, connecting_spring.k * other_mass.v0
+u0, v0, f0 = this_mass.u0, this_mass.v0, connecting_spring.k * other_mass.u0
 
 num_vertices = 1  # Number of vertices
 
@@ -82,8 +82,6 @@ mesh_id = participant.get_mesh_id(mesh_name)
 dimensions = participant.get_dimensions()
 
 vertex = np.zeros(dimensions)
-write_data = u0
-
 vertex_id = participant.set_mesh_vertex(mesh_id, vertex)
 read_data_id = participant.get_data_id(read_data_name, mesh_id)
 write_data_id = participant.get_data_id(write_data_name, mesh_id)
@@ -92,10 +90,8 @@ precice_dt = participant.initialize()
 my_dt = precice_dt / args.n_substeps  # use my_dt < precice_dt for subcycling
 dt = np.min([precice_dt, my_dt])
 
-if participant.is_action_required(
-        precice.action_write_initial_data()):
-    participant.write_scalar_data(
-        write_data_id, vertex_id, write_data)
+if participant.is_action_required(precice.action_write_initial_data()):
+    participant.write_scalar_data(write_data_id, vertex_id, u0)
     participant.mark_action_fulfilled(precice.action_write_initial_data())
 
 participant.initialize_data()
@@ -143,16 +139,13 @@ while participant.is_coupling_ongoing():
 
         participant.mark_action_fulfilled(precice.action_write_iteration_checkpoint())
 
-    read_data = participant.read_scalar_data(read_data_id, vertex_id)
-    f = connecting_spring.k * read_data
+    f = connecting_spring.k * participant.read_scalar_data(read_data_id, vertex_id)
 
     # do time stepping
     u_new, v_new, a_new = time_stepper.do_step(u, v, a, f, dt)
     t_new = t + dt
 
-    write_data = u_new
-
-    participant.write_scalar_data(write_data_id, vertex_id, write_data)
+    participant.write_scalar_data(write_data_id, vertex_id, u_new)
 
     precice_dt = participant.advance(dt)
     dt = np.min([precice_dt, my_dt])
