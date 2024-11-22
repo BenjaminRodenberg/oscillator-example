@@ -1,18 +1,18 @@
-from __future__ import division
-
 import argparse
 import numpy as np
-import precice
-from enum import Enum
 import pandas as pd
 from pathlib import Path
 
-import problemDefinition
+import precice
+from enum import Enum
+from typing import Type
 
-from brot.enums import TimeSteppingSchemes, ReadWaveformSchemes
+from brot.timeSteppers import TimeStepper, TimeSteppingSchemes, GeneralizedAlpha, RungeKutta4, RadauIIA
+import brot.oscillator as problemDefinition
+from brot.enums import ReadWaveformSchemes
 from brot.interpolation import do_linear_interpolation, do_cubic_interpolation
-import brot.timesteppers as timeSteppers
 
+from io import TextIOWrapper
 
 class Participant(Enum):
     MASS_LEFT = "Mass-Left"
@@ -23,10 +23,14 @@ parser = argparse.ArgumentParser()
 parser.add_argument("participantName", help="Name of the solver.", type=str, choices=[p.value for p in Participant])
 parser.add_argument("-ts", "--time-stepping", help="Time stepping scheme being used.", type=str, choices=[s.value for s in TimeSteppingSchemes], default=TimeSteppingSchemes.NEWMARK_BETA.value)
 parser.add_argument("-is", "--interpolation-scheme", help=f"Interpolation scheme being used.", type=str, choices=[ReadWaveformSchemes.LAGRANGE.value, ReadWaveformSchemes.HERMITE.value], default=ReadWaveformSchemes.LAGRANGE.value)
-
 args = parser.parse_args()
 
 participant_name = args.participantName
+
+this_mass: Type[problemDefinition.Mass]
+other_mass: Type[problemDefinition.Mass]
+this_spring: Type[problemDefinition.Spring]
+connecting_spring = problemDefinition.SpringMiddle
 
 if participant_name == Participant.MASS_LEFT.value:
     write_data_name = 'Displacement-Left'
@@ -35,7 +39,6 @@ if participant_name == Participant.MASS_LEFT.value:
 
     this_mass = problemDefinition.MassLeft
     this_spring = problemDefinition.SpringLeft
-    connecting_spring = problemDefinition.SpringMiddle
     other_mass = problemDefinition.MassRight
 
 elif participant_name == Participant.MASS_RIGHT.value:
@@ -45,7 +48,6 @@ elif participant_name == Participant.MASS_RIGHT.value:
 
     this_mass = problemDefinition.MassRight
     this_spring = problemDefinition.SpringRight
-    connecting_spring = problemDefinition.SpringMiddle
     other_mass = problemDefinition.MassLeft
 
 else:
@@ -54,8 +56,6 @@ else:
 mass = this_mass.m
 stiffness = this_spring.k + connecting_spring.k
 u0, v0, f0 = this_mass.u0, this_mass.v0, connecting_spring.k * other_mass.u0
-
-num_vertices = 1  # Number of vertices
 
 solver_process_index = 0
 solver_process_size = 1
@@ -68,15 +68,11 @@ mesh_id = participant.get_mesh_id(mesh_name)
 dimensions = participant.get_dimensions()
 
 vertex = np.zeros(dimensions)
-read_data = np.zeros(num_vertices)
-write_data = u0 * np.ones(num_vertices)
-
 vertex_id = participant.set_mesh_vertex(mesh_id, vertex)
 read_data_id = participant.get_data_id(read_data_name, mesh_id)
 write_data_id = participant.get_data_id(write_data_name, mesh_id)
 
 if(args.interpolation_scheme == ReadWaveformSchemes.HERMITE.value):
-    d_dt_write_data = v0 * np.ones(num_vertices)
     d_dt_read_data_id = participant.get_data_id(f"d_dt_{read_data_name}", mesh_id)
     d_dt_write_data_id = participant.get_data_id(f"d_dt_{write_data_name}", mesh_id)
 
@@ -84,12 +80,11 @@ precice_dt = participant.initialize()
 my_dt = precice_dt  # no subcycling
 dt = np.min([precice_dt, my_dt])
 
-if participant.is_action_required(
-        precice.action_write_initial_data()):
-    participant.write_scalar_data(write_data_id, vertex_id, write_data)
+if participant.is_action_required(precice.action_write_initial_data()):
+    participant.write_scalar_data(write_data_id, vertex_id, u0)
 
     if(args.interpolation_scheme == ReadWaveformSchemes.HERMITE.value):
-        participant.write_scalar_data(d_dt_write_data_id, vertex_id, d_dt_write_data)
+        participant.write_scalar_data(d_dt_write_data_id, vertex_id, v0)
 
     participant.mark_action_fulfilled(precice.action_write_initial_data())
 
@@ -106,36 +101,30 @@ t = 0
 if(args.interpolation_scheme == ReadWaveformSchemes.HERMITE.value):
     d_dt_u_start = d_dt_u_end = other_mass.v0
 
+time_stepper: TimeStepper
+
 if args.time_stepping == TimeSteppingSchemes.GENERALIZED_ALPHA.value:
-    time_stepper = timeSteppers.GeneralizedAlpha(stiffness=stiffness, mass=mass, alpha_f=0.4, alpha_m=0.2)
+    time_stepper = GeneralizedAlpha(stiffness=stiffness, mass=mass, alpha_f=0.4, alpha_m=0.2)
 elif args.time_stepping == TimeSteppingSchemes.NEWMARK_BETA.value:
-    time_stepper = timeSteppers.GeneralizedAlpha(stiffness=stiffness, mass=mass, alpha_f=0.0, alpha_m=0.0)
+    time_stepper = GeneralizedAlpha(stiffness=stiffness, mass=mass, alpha_f=0.0, alpha_m=0.0)
 elif args.time_stepping == TimeSteppingSchemes.RUNGE_KUTTA_4.value:
-    ode_system = np.array([
-        [0, mass],  # du
-        [-stiffness, 0],  # dv
-    ])
-    time_stepper = timeSteppers.RungeKutta4(ode_system=ode_system)
+    time_stepper = RungeKutta4(stiffness=stiffness, mass=mass)
 elif args.time_stepping == TimeSteppingSchemes.Radau_IIA.value:
-    ode_system = np.array([
-        [0, mass],  # du
-        [-stiffness, 0],  # dv
-    ])
-    time_stepper = timeSteppers.RadauIIA(ode_system=ode_system)
+    time_stepper = RadauIIA(stiffness=stiffness, mass=mass)
 else:
-    raise Exception(
-        f"Invalid time stepping scheme {args.time_stepping}. Please use one of {[ts.value for ts in TimeSteppingSchemes]}")
+    raise Exception(f"Invalid time stepping scheme {args.time_stepping}. Please use one of {[ts.value for ts in TimeSteppingSchemes]}")
 
 
 positions = []
+velocities = []
 times = []
 
 u_write = [u]
+v_write = [v]
 t_write = [t]
 
 while participant.is_coupling_ongoing():
-    if participant.is_action_required(
-            precice.action_write_iteration_checkpoint()):
+    if participant.is_action_required(precice.action_write_iteration_checkpoint()):
         u_cp = u
         v_cp = v
         a_cp = a
@@ -147,42 +136,33 @@ while participant.is_coupling_ongoing():
 
         # store data for plotting and postprocessing
         positions += u_write
+        velocities += v_write
         times += t_write
 
-        participant.mark_action_fulfilled(
-            precice.action_write_iteration_checkpoint())
-
-    read_data = participant.read_scalar_data(read_data_id, vertex_id)
-    if(args.interpolation_scheme == ReadWaveformSchemes.HERMITE.value):
-        d_dt_read_data = participant.read_scalar_data(d_dt_read_data_id, vertex_id)
+        participant.mark_action_fulfilled(precice.action_write_iteration_checkpoint())
 
     # implementation of waveform iteration in adapter
-    u_end = read_data  # preCICE v2 returns value at end of window by default
+    u_end = participant.read_scalar_data(read_data_id, vertex_id)  # preCICE v2 returns value at end of window by default
 
     if(args.interpolation_scheme == ReadWaveformSchemes.HERMITE.value):
-        d_dt_u_end = d_dt_read_data  # preCICE v2 returns value at end of window by default
+        d_dt_u_end = participant.read_scalar_data(d_dt_read_data_id, vertex_id)  # preCICE v2 returns value at end of window by default
 
     t_start = t_cp  # time at beginning of the window
     t_end = t_start + dt  # time at end of the window
 
     if(args.interpolation_scheme == ReadWaveformSchemes.LAGRANGE.value):
-        interpolant = lambda t: do_linear_interpolation(t, (t_start, u_start), (t_end, u_end))
+        f = lambda dt: connecting_spring.k * do_linear_interpolation(t_start + dt, (t_start, u_start), (t_end, u_end))
     elif(args.interpolation_scheme == ReadWaveformSchemes.HERMITE.value):
-        interpolant = lambda t: do_cubic_interpolation(t, (t_start, u_start, d_dt_u_start), (t_end, u_end, d_dt_u_end))
-
-    f = connecting_spring.k * interpolant(t + time_stepper.rhs_eval_points(dt))
+        f = lambda dt: connecting_spring.k * do_cubic_interpolation(t_start + dt, (t_start, u_start, d_dt_u_start), (t_end, u_end, d_dt_u_end))
 
     # do time stepping
     u_new, v_new, a_new = time_stepper.do_step(u, v, a, f, dt)
     t_new = t + dt
 
-    write_data = u_new
-
-    participant.write_scalar_data(write_data_id, vertex_id, write_data)
+    participant.write_scalar_data(write_data_id, vertex_id, u_new)
 
     if(args.interpolation_scheme == ReadWaveformSchemes.HERMITE.value):
-        d_dt_write_data = v_new
-        participant.write_scalar_data(d_dt_write_data_id, vertex_id, d_dt_write_data)
+        participant.write_scalar_data(d_dt_write_data_id, vertex_id, v_new)
 
     precice_dt = participant.advance(dt)
     dt = np.min([precice_dt, my_dt])
@@ -195,10 +175,10 @@ while participant.is_coupling_ongoing():
         t = t_cp
         # empty buffers for next window
         u_write = []
+        v_write = []
         t_write = []
 
-        participant.mark_action_fulfilled(
-            precice.action_read_iteration_checkpoint())
+        participant.mark_action_fulfilled(precice.action_read_iteration_checkpoint())
 
     else:
         u = u_new
@@ -208,16 +188,20 @@ while participant.is_coupling_ongoing():
 
         # write data to buffers
         u_write.append(u)
+        v_write.append(v)
         t_write.append(t)
 
 # store final result
 positions += u_write
+velocities += v_write
 times += t_write
 
 participant.finalize()
 
 df = pd.DataFrame()
 df["times"] = times
+df["position"] = positions
+df["velocity"] = velocities
 df["errors"] = abs(this_mass.u_analytical(np.array(times)) - np.array(positions))
 df = df.set_index('times')
 metadata = f'''# time_window_size: {precice_dt}
@@ -225,7 +209,7 @@ metadata = f'''# time_window_size: {precice_dt}
 # time stepping scheme: {args.time_stepping}
 '''
 
-errors_csv = Path(f"errors-{participant_name}.csv")
+errors_csv = Path(f"output-{participant_name}.csv")
 errors_csv.unlink(missing_ok=True)
 
 print("Error w.r.t analytical solution:")

@@ -1,18 +1,18 @@
-from __future__ import division
-
 import argparse
 import numpy as np
-import precice
-from enum import Enum
 import pandas as pd
 from pathlib import Path
 
-import problemDefinition
+import precice
+from enum import Enum
+from typing import Type
 
-from brot.enums import TimeSteppingSchemes, ReadWaveformSchemes
+from brot.timeSteppers import TimeStepper, TimeSteppingSchemes, GeneralizedAlpha, RungeKutta4, RadauIIA
+import brot.oscillator as problemDefinition
+from brot.enums import ReadWaveformSchemes
 from brot.interpolation import do_lagrange_interpolation
-import brot.timesteppers as timeSteppers
 
+from io import TextIOWrapper
 
 class Participant(Enum):
     MASS_LEFT = "Mass-Left"
@@ -29,10 +29,14 @@ parser.add_argument("-nl", "--n-substeps-left", help="Number of substeps in one 
 parser.add_argument("-nr", "--n-substeps-right", help="Number of substeps in one window for Mass-Right", type=int, default=n_substeps_default)
 parser.add_argument("-is", "--interpolation-scheme", help=f"Interpolation scheme being used.", type=str, choices=[ReadWaveformSchemes.LAGRANGE.value, ReadWaveformSchemes.BSPLINE.value], default=ReadWaveformSchemes.LAGRANGE.value)
 parser.add_argument("-p", "--interpolation-degree", help="Desired degree of interpolation scheme (Only allowed, if using BSpline interpolation).", type=int, default=1)
-
 args = parser.parse_args()
 
 participant_name = args.participantName
+
+this_mass: Type[problemDefinition.Mass]
+other_mass: Type[problemDefinition.Mass]
+this_spring: Type[problemDefinition.Spring]
+connecting_spring = problemDefinition.SpringMiddle
 
 write_data_names = []
 read_data_names = []
@@ -51,7 +55,6 @@ if participant_name == Participant.MASS_LEFT.value:
 
     this_mass = problemDefinition.MassLeft
     this_spring = problemDefinition.SpringLeft
-    connecting_spring = problemDefinition.SpringMiddle
     other_mass = problemDefinition.MassRight
 
 elif participant_name == Participant.MASS_RIGHT.value:
@@ -69,7 +72,6 @@ elif participant_name == Participant.MASS_RIGHT.value:
 
     this_mass = problemDefinition.MassRight
     this_spring = problemDefinition.SpringRight
-    connecting_spring = problemDefinition.SpringMiddle
     other_mass = problemDefinition.MassLeft
 
 else:
@@ -77,9 +79,7 @@ else:
 
 mass = this_mass.m
 stiffness = this_spring.k + connecting_spring.k
-u0, v0, f0, d_dt_f0 = this_mass.u0, this_mass.v0, connecting_spring.k * other_mass.u0, connecting_spring.k * other_mass.v0
-
-num_vertices = 1  # Number of vertices
+u0, v0, f0 = this_mass.u0, this_mass.v0, connecting_spring.k * other_mass.u0
 
 solver_process_index = 0
 solver_process_size = 1
@@ -92,9 +92,6 @@ mesh_id = participant.get_mesh_id(mesh_name)
 dimensions = participant.get_dimensions()
 
 vertex = np.zeros(dimensions)
-read_data = np.zeros(num_vertices)
-write_data = u0 * np.ones(num_vertices)
-
 vertex_id = participant.set_mesh_vertex(mesh_id, vertex)
 read_data_ids = [participant.get_data_id(read_data_name, mesh_id) for read_data_name in read_data_names]
 write_data_ids = [participant.get_data_id(write_data_name, mesh_id) for write_data_name in write_data_names]
@@ -106,7 +103,7 @@ dt = np.min([precice_dt, my_dt])
 
 if participant.is_action_required(precice.action_write_initial_data()):
     for write_data_id in write_data_ids:
-        participant.write_scalar_data(write_data_id, vertex_id, write_data)
+        participant.write_scalar_data(write_data_id, vertex_id, u0)
     participant.mark_action_fulfilled(precice.action_write_initial_data())
 
 participant.initialize_data()
@@ -118,31 +115,26 @@ v = v0
 a = a0
 t = 0
 
+time_stepper: TimeStepper
+
 if args.time_stepping == TimeSteppingSchemes.GENERALIZED_ALPHA.value:
-    time_stepper = timeSteppers.GeneralizedAlpha(stiffness=stiffness, mass=mass, alpha_f=0.4, alpha_m=0.2)
+    time_stepper = GeneralizedAlpha(stiffness=stiffness, mass=mass, alpha_f=0.4, alpha_m=0.2)
 elif args.time_stepping == TimeSteppingSchemes.NEWMARK_BETA.value:
-    time_stepper = timeSteppers.GeneralizedAlpha(stiffness=stiffness, mass=mass, alpha_f=0.0, alpha_m=0.0)
+    time_stepper = GeneralizedAlpha(stiffness=stiffness, mass=mass, alpha_f=0.0, alpha_m=0.0)
 elif args.time_stepping == TimeSteppingSchemes.RUNGE_KUTTA_4.value:
-    ode_system = np.array([
-        [0, mass],  # du
-        [-stiffness, 0],  # dv
-    ])
-    time_stepper = timeSteppers.RungeKutta4(ode_system=ode_system)
+    time_stepper = RungeKutta4(stiffness=stiffness, mass=mass)
 elif args.time_stepping == TimeSteppingSchemes.Radau_IIA.value:
-    ode_system = np.array([
-        [0, mass],  # du
-        [-stiffness, 0],  # dv
-    ])
-    time_stepper = timeSteppers.RadauIIA(ode_system=ode_system)
+    time_stepper = RadauIIA(stiffness=stiffness, mass=mass)
 else:
-    raise Exception(
-        f"Invalid time stepping scheme {args.time_stepping}. Please use one of {[ts.value for ts in TimeSteppingSchemes]}")
+    raise Exception(f"Invalid time stepping scheme {args.time_stepping}. Please use one of {[ts.value for ts in TimeSteppingSchemes]}")
 
 
 positions = []
+velocities = []
 times = []
 
 u_write = [u]
+v_write = [v]
 t_write = [t]
 
 substep = 1
@@ -161,6 +153,7 @@ while participant.is_coupling_ongoing():
 
         # store data for plotting and postprocessing
         positions += u_write
+        velocities += v_write
         times += t_write
 
         participant.mark_action_fulfilled(precice.action_write_iteration_checkpoint())
@@ -178,15 +171,14 @@ while participant.is_coupling_ongoing():
         tck = splrep(t_read, u_read, k=b_spline_degree)
         interpolant = lambda t: splev(t, tck)
 
-    f = connecting_spring.k * interpolant(t + time_stepper.rhs_eval_points(dt))
+    f = lambda dt: connecting_spring.k * interpolant(t + dt)
 
     # do time stepping
     u_new, v_new, a_new = time_stepper.do_step(u, v, a, f, dt)
     t_new = t + dt
 
     # store result of this substep to buffer
-    write_data = u_new
-    write_buffer[write_data_ids[substep]] = write_data
+    write_buffer[write_data_ids[substep]] = u_new
     substep += 1
 
     # write n_substeps_this samples to other participant
@@ -205,6 +197,7 @@ while participant.is_coupling_ongoing():
         substep = 0
         # empty buffers for next window
         u_write = []
+        v_write = []
         t_write = []
 
         participant.mark_action_fulfilled(precice.action_read_iteration_checkpoint())
@@ -216,16 +209,20 @@ while participant.is_coupling_ongoing():
         t = t_new
         # write data to buffers
         u_write.append(u)
+        v_write.append(v)
         t_write.append(t)
 
 # store final result
 positions += u_write
+velocities += v_write
 times += t_write
 
 participant.finalize()
 
 df = pd.DataFrame()
 df["times"] = times
+df["position"] = positions
+df["velocity"] = velocities
 df["errors"] = abs(this_mass.u_analytical(np.array(times)) - np.array(positions))
 df = df.set_index('times')
 metadata = f'''# time_window_size: {precice_dt}
@@ -233,7 +230,7 @@ metadata = f'''# time_window_size: {precice_dt}
 # time stepping scheme: {args.time_stepping}
 '''
 
-errors_csv = Path(f"errors-{participant_name}.csv")
+errors_csv = Path(f"output-{participant_name}.csv")
 errors_csv.unlink(missing_ok=True)
 
 print("Error w.r.t analytical solution:")
