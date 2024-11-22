@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "brot"
+version = "0.1.0"
+description = "Tooling for the oscillator example"
+authors = [
+  {name = "Benjamin Rodenberg", email = "benjamin.rodenberg@cit.tum.de"},
+]
+license = {file = "LICENSE"}
+dependencies = [
+    "numpy",
+    "scipy",
+    "GitPython",
+]

@@ -143,7 +143,6 @@ while participant.is_coupling_ongoing():
 
     # do time step, write data, and advance
     u_new, v_new, a_new = time_stepper.do_step(u, v, a, f, dt)
-
     t_new = t + dt
 
     # RadauIIA time stepper provides dense output. Do multiple write calls per time step.

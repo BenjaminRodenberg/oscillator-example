@@ -3,3 +3,7 @@ pyprecice~=3.0
 scipy
 jinja2
 pandas
+
+# custom packages developed by Benjamin Rodenberg
+prepesthel
+brot

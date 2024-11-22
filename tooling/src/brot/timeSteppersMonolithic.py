@@ -1,7 +1,6 @@
-from typing import Tuple, Callable, List
+from typing import Tuple, Callable
 import numpy as np
-from numpy.typing import ArrayLike, NDArray
-import numbers
+from numpy.typing import NDArray
 import scipy as sp
 from scipy.integrate import OdeSolution
 from enum import Enum
