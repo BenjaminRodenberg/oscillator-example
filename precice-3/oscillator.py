@@ -138,26 +138,8 @@ while participant.is_coupling_ongoing():
     u_new, v_new, a_new = time_stepper.do_step(u, v, a, f, dt)
     t_new = t + dt
 
-    # RadauIIA time stepper provides dense output. Do multiple write calls per time step.
-    if isinstance(time_stepper, RadauIIA):
-        # create n samples_per_step of time stepping scheme. Degree of dense
-        # interpolating function is usually larger 1 and, therefore, we need
-        # multiple samples per step.
-        samples_per_step = 5
-        n_time_steps = len(time_stepper.dense_output.ts)  # number of time steps performed by adaptive time stepper
-        n_pseudo = samples_per_step * n_time_steps  # samples_per_step times no. time steps per window.
-        t_pseudo = 0
-        for i in range(n_pseudo):
-            # perform n_pseudo pseudosteps
-            dt_pseudo = dt / n_pseudo
-            t_pseudo += dt_pseudo
-            u_pseudo = time_stepper.dense_output(t_pseudo)[0]
-            participant.write_data(mesh_name, write_data_name, vertex_ids, [u_pseudo])
-            participant.advance(dt_pseudo)
-
-    else:  # simple time stepping without dense output; only a single write call per time step
-        participant.write_data(mesh_name, write_data_name, vertex_ids, [u_new])
-        participant.advance(dt)
+    participant.write_data(mesh_name, write_data_name, vertex_ids, [u_new])
+    participant.advance(dt)
 
     if participant.requires_reading_checkpoint():
         u = u_cp
