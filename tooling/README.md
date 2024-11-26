@@ -6,7 +6,7 @@ The packaage `brot` (short for Benjamin Rodenberg Oscillator Tooling) provides t
 * Different interpolation schemes in `brot.interpolation`
 * Some shared parameters (mass, spring stiffness) and functions (analytical solution) for the oscillator example are provided in `brot.oscillator`
 * Tooling for creation of output files with metadata in `brot.output`
-* Time stepping schemes are provided in `brot.timesteppers`
+* Time stepping schemes are provided in `brot.timeSteppers`
 
 ## Installation
 

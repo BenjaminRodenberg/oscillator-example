@@ -167,7 +167,7 @@ class RadauIIA(TimeStepper):
 
         # use adaptive time stepping; dense_output=True allows us to sample from continuous function later
         ret = sp.integrate.solve_ivp(f, [t0, t1], x0, method="Radau",
-                                     dense_output=True, rtol=10e-5, atol=10e-9)
+                                     dense_output=True, rtol=10e10, atol=10e10)
 
         self._dense_output = ret.sol  # store dense output in class
 
