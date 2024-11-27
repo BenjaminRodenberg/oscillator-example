@@ -13,5 +13,4 @@ license = {file = "LICENSE"}
 dependencies = [
     "numpy",
     "scipy",
-    "GitPython",
 ]
