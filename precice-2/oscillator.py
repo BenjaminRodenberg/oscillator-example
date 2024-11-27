@@ -192,6 +192,7 @@ errors_csv.unlink(missing_ok=True)
 print("Error w.r.t analytical solution:")
 print(f"{my_dt},{df['errors'].max()}")
 
-with open(errors_csv, 'a') as f:
-    f.write(f"{metadata}")
-    df.to_csv(f)
+file: TextIOWrapper
+with open(errors_csv, 'a') as file:
+    file.write(f"{metadata}")
+    df.to_csv(file)
