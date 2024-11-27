@@ -5,5 +5,5 @@ jinja2
 pandas
 
 # custom packages developed by Benjamin Rodenberg
-prepesthel
+prepesthel==0.1.1rc2
 brot

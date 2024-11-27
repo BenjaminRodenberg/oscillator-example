@@ -2,3 +2,7 @@ numpy >1, <2
 scipy
 jinja2
 pandas
+
+# custom packages developed by Benjamin Rodenberg
+prepesthel==0.1.1rc2
+brot
