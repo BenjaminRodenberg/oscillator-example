@@ -1,7 +1,7 @@
 from enum import Enum
 
 
-class ReadWaveformSchemes(Enum):
+class InterpolationSchemes(Enum):
     LAGRANGE = "Lagrange"  # Lagrange interpolation, degree equals number of points
     HERMITE = "Hermite"  # Hermite interpolation, third degree
     BSPLINE = "BSpline"
