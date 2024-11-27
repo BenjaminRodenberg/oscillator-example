@@ -7,11 +7,11 @@ The examples provided in this repository illustrate the whole development from a
 The following examples are included here:
 
 1) `monolithic`: A monolithic solution of the oscillator example.
-2) `precice-2`: A partitioned solution of the oscillator using preCICE 2.5[^3].
-3) `waveform`: A partitioned solution of the oscillator using preCICE 2.5[^3]. Implementing waveform iteration ideas from[^1] in the adapter code.
-4) `multirate`: A partitioned solution of the oscillator using preCICE 2.5[^3]. Implementing waveform iteration ideas from[^1] in the adapter code. Additionally illustrating improvements for subcycling.
-5) `acceleration`: A partitioned solution of the oscillator using preCICE 2.5[^3]. Implementing waveform ideas from [^1] in the adapter code. Additionally illustrating how to implement underrelaxation and quasi-Newton waveform iteration following the approach from [^5]
-6) `precice-3`: A partitioned solution of the oscillator using preCICE 3.x[^4]. The native API from preCICE 3.x is used to apply waveform iteration.
+2) `precice-2`: A partitioned solution of the oscillator using preCICE 2.5.0[^3].
+3) `waveform`: A partitioned solution of the oscillator using preCICE 2.5.0[^3]. Implementing waveform iteration ideas from[^1] in the adapter code.
+4) `multirate`: A partitioned solution of the oscillator using preCICE 2.5.0[^3]. Implementing waveform iteration ideas from[^1] in the adapter code. Additionally illustrating improvements for subcycling.
+5) `acceleration`: A partitioned solution of the oscillator using preCICE 2.5.0[^3]. Implementing waveform ideas from [^1] in the adapter code. Additionally illustrating how to implement underrelaxation and quasi-Newton waveform iteration following the approach from [^5].
+6) `precice-3`: A partitioned solution of the oscillator using preCICE 3.1.1[^4]. The native API from preCICE 3.x is used to apply waveform iteration.
 
 ## Running the code
 
@@ -19,12 +19,17 @@ Each of the provided cases offers the script `doConvergenceStudy.py` to automati
 
 If you want to individually run the case, please run `python3 oscillator.py`. For the monolithic case (1) it is sufficient to run this command in a single terminal. If you want to run one of the partitioned cases (2-6) please open two terminals and run `python3 oscillator.py Mass-Left` and `python3 oscillator.py Mass-Right`. Again, refer to `python3 oscillator.py --help` for a list of available parameters.
 
+### Dependencies
+
+Please make sure to install the package `brot` included in this repository. Refer to `tooling/README.md` for further information.
+If you want to perform convergence studies, please install the package `prepesthel`. Refer to https://github.com/BenjaminRodenberg/precice-performance-study-helpers for further information.
+
 ## Code Reproducibility
 
 It is generally recommended to use the appropriate version of the preCICE virtual machine[^3][^4] for run all experiments. See https://precice.org/installation-vm.html for details.
 
 [^1]: B. Rodenberg, **in preparation**
 [^2]: V. Schüller, B. Rodenberg, B. Uekermann and H. Bungartz, A Simple Test Case for Convergence Order in Time and Energy Conservation of Black-Box Coupling Schemes, in: WCCM-APCOM2022. URL https://www.scipedia.com/public/Rodenberg_2022a
-[^3]: preCICE VM with distribution version v202211.0.0 https://github.com/precice/vm/releases/tag/v202211.0.0
-[^4]: preCICE VM with distribution version vYYYYMM.0.0 **not yet available**
+[^3]: Chourdakis, Gerasimos; Davis, Kyle; Desai, Ishaan; Rodenberg, Benjamin; Schneider, David; Simonis, Frédéric; Uekermann, Benjamin; Ariguib, Boshra; Cardiff, Philip; Jaust, Alexander; Kharitenko, Pavel; Klöfkorn, Robert; Kotarsky, Niklas; Martin, Boris; Scheurer, Erik; Schüller, Valentina; van Zwieten, Gertjan; Yurt, Kursat, 2023, "preCICE Distribution Version v2211.0", https://doi.org/10.18419/darus-3576, DaRUS, V1 
+[^4]: Chen, Jun; Chourdakis, Gerasimos; Desai, Ishaan; Homs-Pons, Carme; Rodenberg, Benjamin; Schneider, David; Simonis, Frédéric; Uekermann, Benjamin; Davis, Kyle; Jaust, Alexander; Kelm, Mathis; Kotarsky, Niklas; Kschidock, Helena; Mishra, Durganshu; Mühlhäußer, Markus; Schrader, Timo Pierre; Schulte, Miriam; Seitz, Valentin; Signorelli, Joseph; van Zwieten, Gertjan; Vinnitchenko, Niklas; Vladimirova, Tina; Willeke, Leonard; Zonta, Elia, 2024, "preCICE Distribution Version v2404.0", https://doi.org/10.18419/darus-4167, DaRUS, V1 
 [^5]: Rüth, B, Uekermann, B, Mehl, M, Birken, P, Monge, A, Bungartz, H-J. Quasi-Newton waveform iteration for partitioned surface-coupled multiphysics applications. Int J Numer Methods Eng. 2021; 122: 5236– 5257. https://doi.org/10.1002/nme.6443
