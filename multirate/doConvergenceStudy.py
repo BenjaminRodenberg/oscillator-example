@@ -1,14 +1,8 @@
-from jinja2 import Environment, select_autoescape, FileSystemLoader
-import pandas as pd
 from pathlib import Path
-import subprocess
-import datetime
-import os
 import uuid
 import argparse
-import sys
 
-from brot.enums import ReadWaveformSchemes
+from brot.interpolation import InterpolationSchemes
 
 from prepesthel.participant import Participant, Participants
 from prepesthel.runner import run, postproc
@@ -74,8 +68,8 @@ if __name__ == "__main__":
         "--interpolation-scheme",
         help=f"Interpolation scheme being used.",
         type=str,
-        choices=[ReadWaveformSchemes.LAGRANGE.value, ReadWaveformSchemes.BSPLINE.value],
-        default=ReadWaveformSchemes.LAGRANGE.value)
+        choices=[InterpolationSchemes.LAGRANGE.value, InterpolationSchemes.BSPLINE.value],
+        default=InterpolationSchemes.LAGRANGE.value)
     parser.add_argument(
         "-wd",
         "--waveform-degree",
@@ -89,8 +83,6 @@ if __name__ == "__main__":
         type=str,
     )
     args = parser.parse_args()
-
-    df = pd.DataFrame()
 
     # Define values that will be inserted into precice-config-template.xml here
     precice_config_params = {

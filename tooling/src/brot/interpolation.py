@@ -1,3 +1,12 @@
+from enum import Enum
+
+
+class ReadWaveformSchemes(Enum):
+    LAGRANGE = "Lagrange"  # Lagrange interpolation, degree equals number of points
+    HERMITE = "Hermite"  # Hermite interpolation, third degree
+    BSPLINE = "BSpline"
+
+
 def do_linear_interpolation(time, ty_start, ty_end):
     '''
     Perform linear interpolation to obtain y value at time from given tuples (t,y) at start and end of the interval

@@ -9,8 +9,7 @@ from typing import Type
 
 from brot.timeSteppers import TimeStepper, TimeSteppingSchemes, GeneralizedAlpha, RungeKutta4, RadauIIA
 import brot.oscillator as problemDefinition
-from brot.enums import ReadWaveformSchemes
-from brot.interpolation import do_lagrange_interpolation
+from brot.interpolation import InterpolationSchemes, do_lagrange_interpolation
 
 from io import TextIOWrapper
 
@@ -27,7 +26,7 @@ parser.add_argument("participantName", help="Name of the solver.", type=str, cho
 parser.add_argument("-ts", "--time-stepping", help="Time stepping scheme being used.", type=str, choices=[s.value for s in TimeSteppingSchemes], default=TimeSteppingSchemes.NEWMARK_BETA.value)
 parser.add_argument("-nl", "--n-substeps-left", help="Number of substeps in one window for Mass-Left", type=int, default=n_substeps_default)
 parser.add_argument("-nr", "--n-substeps-right", help="Number of substeps in one window for Mass-Right", type=int, default=n_substeps_default)
-parser.add_argument("-is", "--interpolation-scheme", help=f"Interpolation scheme being used.", type=str, choices=[ReadWaveformSchemes.LAGRANGE.value, ReadWaveformSchemes.BSPLINE.value], default=ReadWaveformSchemes.LAGRANGE.value)
+parser.add_argument("-is", "--interpolation-scheme", help=f"Interpolation scheme being used.", type=str, choices=[InterpolationSchemes.LAGRANGE.value, InterpolationSchemes.BSPLINE.value], default=InterpolationSchemes.LAGRANGE.value)
 parser.add_argument("-p", "--interpolation-degree", help="Desired degree of interpolation scheme (Only allowed, if using BSpline interpolation).", type=int, default=1)
 args = parser.parse_args()
 
@@ -163,9 +162,9 @@ while participant.is_coupling_ongoing():
         u_read[i+1] = participant.read_scalar_data(read_data_ids[i], vertex_id)
 
     # implementation of waveform iteration in adapter
-    if args.interpolation_scheme == ReadWaveformSchemes.LAGRANGE.value:
+    if args.interpolation_scheme == InterpolationSchemes.LAGRANGE.value:
         interpolant = lambda t: do_lagrange_interpolation(t, t_read, u_read)
-    elif args.interpolation_scheme == ReadWaveformSchemes.BSPLINE.value:
+    elif args.interpolation_scheme == InterpolationSchemes.BSPLINE.value:
         from scipy.interpolate import splrep, splev
         b_spline_degree = args.interpolation_degree
         tck = splrep(t_read, u_read, k=b_spline_degree)

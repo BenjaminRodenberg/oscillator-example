@@ -2,7 +2,7 @@ from pathlib import Path
 import uuid
 import argparse
 
-from brot.enums import ReadWaveformSchemes
+from brot.interpolation import InterpolationSchemes
 
 from prepesthel.participant import Participant, Participants
 from prepesthel.runner import run, postproc
@@ -48,8 +48,8 @@ if __name__ == "__main__":
         "--interpolation-scheme",
         help=f"Interpolation scheme being used.",
         type=str,
-        choices=[ReadWaveformSchemes.LAGRANGE.value, ReadWaveformSchemes.HERMITE.value],
-        default=ReadWaveformSchemes.LAGRANGE.value)
+        choices=[InterpolationSchemes.LAGRANGE.value, InterpolationSchemes.HERMITE.value],
+        default=InterpolationSchemes.LAGRANGE.value)
     parser.add_argument(
         "-o",
         "--out-filename",
@@ -86,7 +86,7 @@ if __name__ == "__main__":
     for dt in [args.base_time_window_size * 0.5**i for i in range(args.time_window_refinements)]:
         precice_config_params['time_window_size'] = dt
 
-        if ((args.interpolation_scheme == ReadWaveformSchemes.LAGRANGE.value) and (args.template_path != "precice-config-template.xml")) or ((args.interpolation_scheme == ReadWaveformSchemes.HERMITE.value) and (args.template_path != "precice-config-hermite-template.xml")):
+        if ((args.interpolation_scheme == InterpolationSchemes.LAGRANGE.value) and (args.template_path != "precice-config-template.xml")) or ((args.interpolation_scheme == InterpolationSchemes.HERMITE.value) and (args.template_path != "precice-config-hermite-template.xml")):
             raise Exception(f"Mismatch of provided template {args.template_path} and requested interpolation scheme {args.interpolation_scheme}")
 
         run(participants, args.template_path, precice_config_params)

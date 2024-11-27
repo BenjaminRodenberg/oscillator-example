@@ -1,7 +1,14 @@
 from jinja2 import Environment, select_autoescape, FileSystemLoader
 import os
 from pathlib import Path
-from brot.enums import AccelerationSchemes
+from enum import Enum
+
+
+class AccelerationSchemes(Enum):
+    NONE = "None"
+    CONSTANT = "Constant"
+    REDUCED_QUASI_NEWTON = "rQN"
+    FULL_QUASI_NEWTON = "QN"
 
 
 def render(dt, n_left, n_right, acceleration_scheme):
