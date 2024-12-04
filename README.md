@@ -1,4 +1,4 @@
-# oscillator-example
+# Oscillator example for higher-order and multirate partitioned time stepping with preCICE
 
 This example was developed in the scope of the dissertation of Benjamin Rodenberg[^1]. A modified version of the example was already published in the conference proceedings of WCCM-APCOM 2022[^2].
 
@@ -28,8 +28,9 @@ If you want to perform convergence studies, please install the package `prepesth
 
 It is generally recommended to use the appropriate version of the preCICE virtual machine[^3][^4] for run all experiments. See https://precice.org/installation-vm.html for details.
 
-[^1]: B. Rodenberg, **in preparation**
-[^2]: V. Schüller, B. Rodenberg, B. Uekermann and H. Bungartz, A Simple Test Case for Convergence Order in Time and Energy Conservation of Black-Box Coupling Schemes, in: WCCM-APCOM2022. URL https://www.scipedia.com/public/Rodenberg_2022a
-[^3]: Chourdakis, Gerasimos; Davis, Kyle; Desai, Ishaan; Rodenberg, Benjamin; Schneider, David; Simonis, Frédéric; Uekermann, Benjamin; Ariguib, Boshra; Cardiff, Philip; Jaust, Alexander; Kharitenko, Pavel; Klöfkorn, Robert; Kotarsky, Niklas; Martin, Boris; Scheurer, Erik; Schüller, Valentina; van Zwieten, Gertjan; Yurt, Kursat, 2023, "preCICE Distribution Version v2211.0", https://doi.org/10.18419/darus-3576, DaRUS, V1 
-[^4]: Chen, Jun; Chourdakis, Gerasimos; Desai, Ishaan; Homs-Pons, Carme; Rodenberg, Benjamin; Schneider, David; Simonis, Frédéric; Uekermann, Benjamin; Davis, Kyle; Jaust, Alexander; Kelm, Mathis; Kotarsky, Niklas; Kschidock, Helena; Mishra, Durganshu; Mühlhäußer, Markus; Schrader, Timo Pierre; Schulte, Miriam; Seitz, Valentin; Signorelli, Joseph; van Zwieten, Gertjan; Vinnitchenko, Niklas; Vladimirova, Tina; Willeke, Leonard; Zonta, Elia, 2024, "preCICE Distribution Version v2404.0", https://doi.org/10.18419/darus-4167, DaRUS, V1 
-[^5]: Rüth, B, Uekermann, B, Mehl, M, Birken, P, Monge, A, Bungartz, H-J. Quasi-Newton waveform iteration for partitioned surface-coupled multiphysics applications. Int J Numer Methods Eng. 2021; 122: 5236– 5257. https://doi.org/10.1002/nme.6443
+[^1]: Rodenberg, Benjamin. *Flexible and robust time stepping for partitioned multiphysics*. Technical University of Munich, 2025. Unpublished manuscript. Available at: https://doi.org/**TODO**.
+[^2]: Schüller, Valentina; Rodenberg, Benjamin; Uekermann, Benjamin; Bungartz, Hans-Joachim. *A Simple Test Case for Convergence Order in Time and Energy Conservation of Black-Box Coupling Schemes*. WCCM-APCOM2022, 2022. Available at: https://www.scipedia.com/public/Rodenberg_2022a.
+[^3]: Chourdakis, Gerasimos; Davis, Kyle; Desai, Ishaan; Rodenberg, Benjamin; Schneider, David; Simonis, Frédéric; Uekermann, Benjamin; Ariguib, Boshra; Cardiff, Philip; Jaust, Alexander; Kharitenko, Pavel; Klöfkorn, Robert; Kotarsky, Niklas; Martin, Boris; Scheurer, Erik; Schüller, Valentina; van Zwieten, Gertjan; Yurt, Kursat. *preCICE Distribution Version v2211.0*. DaRUS, 2023, V1. https://doi.org/10.18419/darus-3576.
+[^4]: Chen, Jun; Chourdakis, Gerasimos; Desai, Ishaan; Homs-Pons, Carme; Rodenberg, Benjamin; Schneider, David; Simonis, Frédéric; Uekermann, Benjamin; Davis, Kyle; Jaust, Alexander; Kelm, Mathis; Kotarsky, Niklas; Kschidock, Helena; Mishra, Durganshu; Mühlhäußer, Markus; Schrader, Timo Pierre; Schulte, Miriam; Seitz, Valentin; Signorelli, Joseph; van Zwieten, Gertjan; Vinnitchenko, Niklas; Vladimirova, Tina; Willeke, Leonard; Zonta, Elia. *preCICE Distribution Version v2404.0*. DaRUS, 2024, V1. https://doi.org/10.18419/darus-4167.
+[^5]: Rüth, Benjamin; Uekermann, Benjamin; Mehl, Mehl; Birken, Philipp; Monge, Azahar; Bungartz, Hans-Joachim *Quasi-Newton waveform iteration for partitioned surface-coupled multiphysics applications*. International Journal for Numerical Methods in Engineering, 2021, 122: 5236–5257. https://doi.org/10.1002/nme.6443.
+
