@@ -12,6 +12,7 @@ import brot.oscillator as problemDefinition
 
 from io import TextIOWrapper
 
+
 class Participant(Enum):
     MASS_LEFT = "Mass-Left"
     MASS_RIGHT = "Mass-Right"

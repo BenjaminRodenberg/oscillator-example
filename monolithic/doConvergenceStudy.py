@@ -66,5 +66,5 @@ if __name__ == "__main__":
 
         results.append(summary)
         results.output_preliminary()
-        
-    results.output_final(participants, args)    
+
+    results.output_final(participants, args)

@@ -35,14 +35,14 @@ if __name__ == "__main__":
         help="Number of refinements by factor 2 for the time window size",
         type=int,
         default=5)
-    ## add solver specific arguments below, if needed
+    # add solver specific arguments below, if needed
     parser.add_argument(
         "-tss",
         "--time-stepping-scheme",
         help="Define time stepping scheme used by each solver",
         type=str,
         nargs=n_supported_participants,
-        default=n_supported_participants*["Newmark_beta"])
+        default=n_supported_participants * ["Newmark_beta"])
     parser.add_argument(
         "-is",
         "--interpolation-scheme",
@@ -67,10 +67,21 @@ if __name__ == "__main__":
     root_folder = Path(__file__).parent.absolute()
 
     # Define how participants will be executed here
-    participants: Participants = {
-        "Mass-Left": Participant("Mass-Left", root_folder, [".venv/bin/python3", "oscillator.py"], ["Mass-Left"], {'--time-stepping': args.time_stepping_scheme[0], '--interpolation-scheme': args.interpolation_scheme}),
-        "Mass-Right": Participant("Mass-Right", root_folder, [".venv/bin/python3", "oscillator.py"], ["Mass-Right"], {'--time-stepping': args.time_stepping_scheme[1], '--interpolation-scheme': args.interpolation_scheme}),        
-    }
+    participants: Participants = {"Mass-Left": Participant("Mass-Left",
+                                                           root_folder,
+                                                           [".venv/bin/python3",
+                                                            "oscillator.py"],
+                                                           ["Mass-Left"],
+                                                           {'--time-stepping': args.time_stepping_scheme[0],
+                                                               '--interpolation-scheme': args.interpolation_scheme}),
+                                  "Mass-Right": Participant("Mass-Right",
+                                                            root_folder,
+                                                            [".venv/bin/python3",
+                                                             "oscillator.py"],
+                                                            ["Mass-Right"],
+                                                            {'--time-stepping': args.time_stepping_scheme[1],
+                                                             '--interpolation-scheme': args.interpolation_scheme}),
+                                  }
 
     if len(participants) != n_supported_participants:
         raise Exception(f"Currently only supports coupling of {n_supported_participants} participants")
@@ -86,8 +97,10 @@ if __name__ == "__main__":
     for dt in [args.base_time_window_size * 0.5**i for i in range(args.time_window_refinements)]:
         precice_config_params['time_window_size'] = dt
 
-        if ((args.interpolation_scheme == InterpolationSchemes.LAGRANGE.value) and (args.template_path != "precice-config-template.xml")) or ((args.interpolation_scheme == InterpolationSchemes.HERMITE.value) and (args.template_path != "precice-config-hermite-template.xml")):
-            raise Exception(f"Mismatch of provided template {args.template_path} and requested interpolation scheme {args.interpolation_scheme}")
+        if ((args.interpolation_scheme == InterpolationSchemes.LAGRANGE.value) and (args.template_path != "precice-config-template.xml")
+                ) or ((args.interpolation_scheme == InterpolationSchemes.HERMITE.value) and (args.template_path != "precice-config-hermite-template.xml")):
+            raise Exception(
+                f"Mismatch of provided template {args.template_path} and requested interpolation scheme {args.interpolation_scheme}")
 
         run(participants, args.template_path, precice_config_params)
         summary = postproc(participants, precice_config_params)

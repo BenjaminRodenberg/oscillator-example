@@ -13,6 +13,7 @@ from brot.interpolation import InterpolationSchemes, do_lagrange_interpolation
 
 from io import TextIOWrapper
 
+
 class Participant(Enum):
     MASS_LEFT = "Mass-Left"
     MASS_RIGHT = "Mass-Right"
@@ -23,11 +24,35 @@ n_substeps_default = 1
 
 parser = argparse.ArgumentParser()
 parser.add_argument("participantName", help="Name of the solver.", type=str, choices=[p.value for p in Participant])
-parser.add_argument("-ts", "--time-stepping", help="Time stepping scheme being used.", type=str, choices=[s.value for s in TimeSteppingSchemes], default=TimeSteppingSchemes.NEWMARK_BETA.value)
-parser.add_argument("-nl", "--n-substeps-left", help="Number of substeps in one window for Mass-Left", type=int, default=n_substeps_default)
-parser.add_argument("-nr", "--n-substeps-right", help="Number of substeps in one window for Mass-Right", type=int, default=n_substeps_default)
-parser.add_argument("-is", "--interpolation-scheme", help=f"Interpolation scheme being used.", type=str, choices=[InterpolationSchemes.LAGRANGE.value, InterpolationSchemes.BSPLINE.value], default=InterpolationSchemes.LAGRANGE.value)
-parser.add_argument("-p", "--interpolation-degree", help="Desired degree of interpolation scheme (Only allowed, if using BSpline interpolation).", type=int, default=1)
+parser.add_argument("-ts", "--time-stepping", help="Time stepping scheme being used.", type=str,
+                    choices=[s.value for s in TimeSteppingSchemes], default=TimeSteppingSchemes.NEWMARK_BETA.value)
+parser.add_argument(
+    "-nl",
+    "--n-substeps-left",
+    help="Number of substeps in one window for Mass-Left",
+    type=int,
+    default=n_substeps_default)
+parser.add_argument(
+    "-nr",
+    "--n-substeps-right",
+    help="Number of substeps in one window for Mass-Right",
+    type=int,
+    default=n_substeps_default)
+parser.add_argument(
+    "-is",
+    "--interpolation-scheme",
+    help=f"Interpolation scheme being used.",
+    type=str,
+    choices=[
+        InterpolationSchemes.LAGRANGE.value,
+        InterpolationSchemes.BSPLINE.value],
+    default=InterpolationSchemes.LAGRANGE.value)
+parser.add_argument(
+    "-p",
+    "--interpolation-degree",
+    help="Desired degree of interpolation scheme (Only allowed, if using BSpline interpolation).",
+    type=int,
+    default=1)
 args = parser.parse_args()
 
 participant_name = args.participantName
@@ -40,7 +65,8 @@ connecting_spring = problemDefinition.SpringMiddle
 write_data_names = []
 read_data_names = []
 if participant_name == Participant.MASS_LEFT.value:
-    # this participant must know substeps of other participant to use correct time grid in interpolation (breaks black-box!)
+    # this participant must know substeps of other participant to use correct
+    # time grid in interpolation (breaks black-box!)
     n_substeps_this = args.n_substeps_left
     n_substeps_other = args.n_substeps_right
 
@@ -57,7 +83,8 @@ if participant_name == Participant.MASS_LEFT.value:
     other_mass = problemDefinition.MassRight
 
 elif participant_name == Participant.MASS_RIGHT.value:
-    # this participant must know substeps of other participant to use correct time grid in interpolation (breaks black-box!)
+    # this participant must know substeps of other participant to use correct
+    # time grid in interpolation (breaks black-box!)
     n_substeps_this = args.n_substeps_right
     n_substeps_other = args.n_substeps_left
 
@@ -125,7 +152,8 @@ elif args.time_stepping == TimeSteppingSchemes.RUNGE_KUTTA_4.value:
 elif args.time_stepping == TimeSteppingSchemes.Radau_IIA.value:
     time_stepper = RadauIIA(stiffness=stiffness, mass=mass)
 else:
-    raise Exception(f"Invalid time stepping scheme {args.time_stepping}. Please use one of {[ts.value for ts in TimeSteppingSchemes]}")
+    raise Exception(
+        f"Invalid time stepping scheme {args.time_stepping}. Please use one of {[ts.value for ts in TimeSteppingSchemes]}")
 
 
 positions = []
@@ -147,7 +175,7 @@ while participant.is_coupling_ongoing():
         a_cp = a
         t_cp = t
         u_read[0] = u_read[-1]  # force at the beginning of the new window is force at end of last window
-        t_read = [t + i*other_dt for i in range(n_substeps_other+1)]
+        t_read = [t + i * other_dt for i in range(n_substeps_other + 1)]
         substep = 0
 
         # store data for plotting and postprocessing
@@ -159,18 +187,18 @@ while participant.is_coupling_ongoing():
 
     # read n_substeps_other samples that will be associated with t_read
     for i in range(n_substeps_other):
-        u_read[i+1] = participant.read_scalar_data(read_data_ids[i], vertex_id)
+        u_read[i + 1] = participant.read_scalar_data(read_data_ids[i], vertex_id)
 
     # implementation of waveform iteration in adapter
     if args.interpolation_scheme == InterpolationSchemes.LAGRANGE.value:
-        interpolant = lambda t: do_lagrange_interpolation(t, t_read, u_read)
+        def interpolant(t): return do_lagrange_interpolation(t, t_read, u_read)
     elif args.interpolation_scheme == InterpolationSchemes.BSPLINE.value:
         from scipy.interpolate import splrep, splev
         b_spline_degree = args.interpolation_degree
         tck = splrep(t_read, u_read, k=b_spline_degree)
-        interpolant = lambda t: splev(t, tck)
+        def interpolant(t): return splev(t, tck)
 
-    f = lambda dt: connecting_spring.k * interpolant(t + dt)
+    def f(dt): return connecting_spring.k * interpolant(t + dt)
 
     # do time stepping
     u_new, v_new, a_new = time_stepper.do_step(u, v, a, f, dt)
