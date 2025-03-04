@@ -1,5 +1,5 @@
 numpy >1, <2
-pyprecice==3.1.2
+pyprecice==3.1.1
 scipy
 jinja2
 pandas
