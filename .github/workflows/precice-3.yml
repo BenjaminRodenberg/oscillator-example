@@ -135,7 +135,7 @@ jobs:
             ./precice-3/convergence-studies
   merge:
     runs-on: ubuntu-latest
-    needs: run_experiments
+    needs: [run_experiments_v3_1, run_experiments_v3_nightly]
     steps:
       - name: Merge results
         uses: actions/upload-artifact/merge@v4
