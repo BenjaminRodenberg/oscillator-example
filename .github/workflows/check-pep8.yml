@@ -1,0 +1,28 @@
+name: autopep8
+on:
+  push:
+    branches:
+      - "*"
+  pull_request:
+    branches:
+      - "*"
+jobs:
+  autopep8:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: autopep8 
+        id: autopep8
+        uses: peter-evans/autopep8@v2
+        with:
+          args: --recursive --in-place --aggressive --aggressive --exit-code --ignore E402 --max-line-length 120 .
+      - name: Commit autopep8 changes
+        if: steps.autopep8.outputs.exit-code == 2
+        run: |
+          git config --global user.name 'Autopep8 Bot'
+          git config --global user.email ''
+          git commit -am "Automated autopep8 fixes"
+          git push
+      - name: Fail if autopep8 made changes
+        if: ${{ steps.autopep8.outputs.exit-code == 2 }}
+        run: exit 1
