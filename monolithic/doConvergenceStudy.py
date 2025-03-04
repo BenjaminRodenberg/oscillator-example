@@ -4,13 +4,23 @@ import argparse
 
 from prepesthel.participant import Participant, Participants
 from prepesthel.runner import run, postproc
-from prepesthel.io import Results
+from prepesthel.io import Results, Executors
 
 
 if __name__ == "__main__":
     n_supported_participants = 1  # convergence study just for a monolithic simulation
 
     parser = argparse.ArgumentParser(description="Solving oscillator example.")
+    parser.add_argument(
+        "--silent",
+        help="Deactivates result output to command line",
+        action='store_true')
+    parser.add_argument(
+        "--executor",
+        help="Define type of executor",
+        type=str,
+        choices=[e.value for e in Executors],
+        default=Executors.LOCAL.value)
     parser.add_argument(
         "-dt",
         "--base-time-step-size",
@@ -62,9 +72,9 @@ if __name__ == "__main__":
             p.kwargs['--time-step-size'] = dt
 
         run(participants)
-        summary = postproc(participants)
+        summary = postproc(participants, silent=args.silent)
 
         results.append(summary)
         results.output_preliminary()
         
-    results.output_final(participants, args)    
+    results.output_final(participants, args, silent=args.silent, executor=args.executor))    
