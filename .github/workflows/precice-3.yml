@@ -5,7 +5,7 @@ on:
       - introduce-ci
 
 jobs:
-  run_experiments:
+  run_experiments_v3_1:
     strategy:
       matrix:
         experiment:
@@ -20,13 +20,13 @@ jobs:
           args: '-tss radauIIA radauIIA -o convergence-studies/higher-order/precice_3_radauIIA.csv'
         # Subcycling
         - name: Subcycling Newmark_beta
-          args: 'python3 doConvergenceStudy.py precice-config-template.xml -s 5 -sb 1 1 -sf 2 1 -w 1 -tss Newmark_beta Newmark_beta -o convergence-studies/subcycling/precice_3_Newmark_beta.csv'
+          args: '-s 5 -sb 1 1 -sf 2 1 -w 1 -tss Newmark_beta Newmark_beta -o convergence-studies/subcycling/precice_3_Newmark_beta.csv'
         - name: Subcycling generalized_alpha
-          args: 'python3 doConvergenceStudy.py precice-config-template.xml -s 5 -sb 1 1 -sf 2 1 -w 1 -tss generalized_alpha generalized_alpha -o convergence-studies/subcycling/precice_3_generalized_alpha.csv'
+          args: '-s 5 -sb 1 1 -sf 2 1 -w 1 -tss generalized_alpha generalized_alpha -o convergence-studies/subcycling/precice_3_generalized_alpha.csv'
         - name: Subcycling runge_kutta_4
-          args: 'python3 doConvergenceStudy.py precice-config-template.xml -s 5 -sb 1 1 -sf 2 1 -w 1 -tss runge_kutta_4 runge_kutta_4 -o convergence-studies/subcycling/precice_3_runge_kutta_4.csv'
+          args: '-s 5 -sb 1 1 -sf 2 1 -w 1 -tss runge_kutta_4 runge_kutta_4 -o convergence-studies/subcycling/precice_3_runge_kutta_4.csv'
         - name: Subcycling radauIIA
-          args: 'python3 doConvergenceStudy.py precice-config-template.xml -s 5 -sb 1 1 -sf 2 1 -w 1 -tss radauIIA radauIIA -o convergence-studies/subcycling/precice_3_radauIIA.csv'
+          args: '-s 5 -sb 1 1 -sf 2 1 -w 1 -tss radauIIA radauIIA -o convergence-studies/subcycling/precice_3_radauIIA.csv'
         # Runge Kutta 4
         - name: runge_kutta_4 degree 1
           args: '-tss runge_kutta_4 runge_kutta_4 -wd 1 -dt 0.2 -sb 5 5 -o convergence-studies/runge-kutta-4/precice_3_runge_kutta_4_degree1.csv'
@@ -41,7 +41,7 @@ jobs:
           args: '-tss radauIIA radauIIA -wd 2 -dt 0.2 -sb 5 5 -o convergence-studies/radauIIA/precice_3_radauIIA_degree2.csv'
         - name: radauIIA degree 3
           args: '-tss radauIIA radauIIA -wd 3 -dt 0.2 -sb 5 5 -o convergence-studies/radauIIA/precice_3_radauIIA_degree3.csv'
-        # degree > 3 only allowed for precice > 3.2; see .github/workflows/precice-3-nighly.yml
+        # degree > 3 only allowed for precice > 3.2; see run_experiments_v3_nightly below
         # - name: radauIIA degree 4
         #   args: '-tss radauIIA radauIIA -wd 4 -dt 0.2 -sb 5 5 -o convergence-studies/radauIIA/precice_3_radauIIA_degree4.csv'
         # - name: radauIIA degree 5
@@ -51,6 +51,54 @@ jobs:
       run:
         working-directory: ./precice-3
     container: precice/precice:3.1.2
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      - name: Install Dependencies
+        run: |
+          apt-get -qq update
+          apt-get -qq install python3-venv git pkg-config g++
+          rm -rf /var/lib/apt/lists/*
+      - name: Create venv
+        run: |
+          ./make-venv.sh
+      - name: Activate venv
+        # see https://stackoverflow.com/a/74669486
+        run: |
+          . .venv/bin/activate
+          echo PATH=$PATH >> $GITHUB_ENV
+      - name: Run tutorial
+        run: |
+          python3 doConvergenceStudy.py precice-config-template.xml --silent --executor Github ${{ matrix.experiment.args }}
+      - name: Store logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: precice-3 logs ${{ matrix.experiment.name }}
+          path: |
+            # working directory is ignored by actions/upload-artifact
+            ./precice-3/*.log
+      - name: Store results
+        uses: actions/upload-artifact@v4
+        with:
+          name: precice-3 ${{ matrix.experiment.name }}
+          path: |
+            # working directory is ignored by actions/upload-artifact
+            ./precice-3/convergence-studies
+  run_experiments_v3_nightly:
+    strategy:
+      matrix:
+        experiment:
+        # RadauIIA
+        - name: radauIIA degree 4
+          args: '-tss radauIIA radauIIA -wd 4 -dt 0.2 -sb 5 5 -o convergence-studies/radauIIA/precice_3_radauIIA_degree4.csv'
+        - name: radauIIA degree 5
+          args: '-tss radauIIA radauIIA -wd 5 -dt 0.2 -sb 5 5 -o convergence-studies/radauIIA/precice_3_radauIIA_degree5.csv'          
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./precice-3
+    container: precice/precice:nightly
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
