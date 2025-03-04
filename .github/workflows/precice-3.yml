@@ -5,7 +5,7 @@ on:
       - introduce-ci
 
 jobs:
-  run_experiments_v3_1:
+  run_experiments:
     strategy:
       matrix:
         experiment:
