@@ -75,6 +75,6 @@ if __name__ == "__main__":
         summary = postproc(participants, silent=args.silent)
 
         results.append(summary)
-        results.output_preliminary()
+        results.output_preliminary(silent=args.silent)
         
     results.output_final(participants, args, silent=args.silent, executor=args.executor)
