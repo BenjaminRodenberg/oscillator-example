@@ -90,9 +90,9 @@ if __name__ == "__main__":
             raise Exception(f"Mismatch of provided template {args.template_path} and requested interpolation scheme {args.interpolation_scheme}")
 
         run(participants, args.template_path, precice_config_params)
-        summary = postproc(participants, precice_config_params)
+        summary = postproc(participants, precice_config_params, silent=args.silent)
 
         results.append(summary)
-        results.output_preliminary()
+        results.output_preliminary(silent=args.silent)
 
-    results.output_final(participants, args, precice_config_params)
+    results.output_final(participants, args, precice_config_params, silent=args.silent, executor=args.executor)
