@@ -37,7 +37,7 @@ jobs:
           echo PATH=$PATH >> $GITHUB_ENV
       - name: Run tutorial
         run: |
-          python3 doConvergenceStudy.py ${{ matrix.experiment.args }}
+          python3 doConvergenceStudy.py --silent --executor Github ${{ matrix.experiment.args }}
       - name: Store results
         uses: actions/upload-artifact@v4
         with:
