@@ -4,6 +4,4 @@ jinja2
 pandas
 
 # custom packages developed by Benjamin Rodenberg
-#prepesthel==0.1.1rc2
-prepesthel @ git+https://github.com/BenjaminRodenberg/precice-performance-study-helpers
-brot
+prepesthel==0.1.1
