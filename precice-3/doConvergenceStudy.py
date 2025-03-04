@@ -4,7 +4,7 @@ import argparse
 
 from prepesthel.participant import Participant, Participants
 from prepesthel.runner import run, postproc
-from prepesthel.io import Results
+from prepesthel.io import Results, Executors
 
 
 if __name__ == "__main__":
@@ -15,6 +15,16 @@ if __name__ == "__main__":
         "template_path",
         help="template for the preCICE configuration file",
         type=str)
+    parser.add_argument(
+        "--silent",
+        help="Deactivates result output to command line",
+        action='store_true')
+    parser.add_argument(
+        "--executor",
+        help="Define type of executor",
+        type=str,
+        choices=[e.value for e in Executors],
+        default=Executors.LOCAL.value)
     parser.add_argument(
         "-T",
         "--max-time",
@@ -124,9 +134,9 @@ if __name__ == "__main__":
                 i += 1
 
             run(participants, args.template_path, precice_config_params)
-            summary = postproc(participants, precice_config_params)
+            summary = postproc(participants, precice_config_params, silent=args.silent)
 
             results.append(summary)
-            results.output_preliminary()
+            results.output_preliminary(silent=args.silent)
 
-    results.output_final(participants, args, precice_config_params)
+    results.output_final(participants, args, precice_config_params, silent=args.silent, executor=args.executor)

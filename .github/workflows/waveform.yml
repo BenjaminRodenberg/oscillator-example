@@ -1,0 +1,71 @@
+name: Run waveform experiments
+on: workflow_dispatch
+
+jobs:
+  run_experiments:
+    strategy:
+      matrix:
+        experiment:
+        - name:   Lagrange Newmark_beta
+          config: 'precice-config-template.xml'
+          args:   '-tss Newmark_beta Newmark_beta -o convergence-studies/lagrange/waveform_Newmark_beta.csv'
+        - name:   Lagrange generalized_alpha
+          config: 'precice-config-template.xml'
+          args:   '-tss generalized_alpha generalized_alpha -o convergence-studies/lagrange/waveform_generalized_alpha.csv'
+        - name:   Lagrange runge_kutta_4
+          config: 'precice-config-template.xml'
+          args:   '-tss runge_kutta_4 runge_kutta_4 -o convergence-studies/lagrange/waveform_runge_kutta_4.csv'
+        - name:   Lagrange radauIIA
+          config: 'precice-config-template.xml'
+          args:   '-tss radauIIA radauIIA -o convergence-studies/lagrange/waveform_radauIIA.csv'
+        - name:   Hermite Newmark_beta
+          config: 'precice-config-hermite-template.xml'
+          args:   '-is Hermite -tss Newmark_beta Newmark_beta -o convergence-studies/hermite/waveform_Newmark_beta.csv'
+        - name:   Hermite generalized_alpha
+          config: 'precice-config-hermite-template.xml'
+          args:   '-is Hermite -tss generalized_alpha generalized_alpha -o convergence-studies/hermite/waveform_generalized_alpha.csv'
+        - name:   Hermite runge_kutta_4
+          config: 'precice-config-hermite-template.xml'
+          args:   '-is Hermite -tss runge_kutta_4 runge_kutta_4 -o convergence-studies/hermite/waveform_runge_kutta_4.csv'
+        - name:   Hermite radauIIA
+          config: 'precice-config-hermite-template.xml'
+          args:   '-is Hermite -tss radauIIA radauIIA -o convergence-studies/hermite/waveform_radauIIA.csv'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./waveform
+    container: precice/precice:2.5.1
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      - name: Install Dependencies
+        run: |
+          apt-get -qq update
+          apt-get -qq install python3-venv git pkg-config g++
+          rm -rf /var/lib/apt/lists/*
+      - name: Create venv
+        run: |
+          ./make-venv.sh
+      - name: Activate venv
+        # see https://stackoverflow.com/a/74669486
+        run: |
+          . .venv/bin/activate
+          echo PATH=$PATH >> $GITHUB_ENV
+      - name: Run tutorial
+        run: |
+          python3 doConvergenceStudy.py ${{ matrix.experiment.config }} --silent --executor Github ${{ matrix.experiment.args }}
+      - name: Store results
+        uses: actions/upload-artifact@v4
+        with:
+          name: waveform ${{ matrix.experiment.name }}
+          path: |
+            # working directory is ignored by actions/upload-artifact
+            ./waveform/convergence-studies
+  merge:
+    runs-on: ubuntu-latest
+    needs: run_experiments
+    steps:
+      - name: Merge results
+        uses: actions/upload-artifact/merge@v4
+        with:
+          name: waveform
