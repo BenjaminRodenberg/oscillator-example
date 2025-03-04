@@ -1,8 +1,5 @@
 name: Run waveform experiments
-on:
-  push:
-    branches:
-      - introduce-ci
+on: workflow_dispatch
 
 jobs:
   run_experiments:
