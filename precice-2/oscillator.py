@@ -12,6 +12,7 @@ import brot.oscillator as problemDefinition
 
 from io import TextIOWrapper
 
+
 class Participant(Enum):
     MASS_LEFT = "Mass-Left"
     MASS_RIGHT = "Mass-Right"
@@ -110,7 +111,8 @@ elif args.time_stepping == TimeSteppingSchemes.RUNGE_KUTTA_4.value:
 elif args.time_stepping == TimeSteppingSchemes.Radau_IIA.value:
     time_stepper = RadauIIA(stiffness=stiffness, mass=mass)
 else:
-    raise Exception(f"Invalid time stepping scheme {args.time_stepping}. Please use one of {[ts.value for ts in TimeSteppingSchemes]}")
+    raise Exception(
+        f"Invalid time stepping scheme {args.time_stepping}. Please use one of {[ts.value for ts in TimeSteppingSchemes]}")
 
 
 positions = []

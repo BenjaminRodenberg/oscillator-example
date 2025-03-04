@@ -13,6 +13,7 @@ from brot.interpolation import InterpolationSchemes, do_linear_interpolation, do
 
 from io import TextIOWrapper
 
+
 class Participant(Enum):
     MASS_LEFT = "Mass-Left"
     MASS_RIGHT = "Mass-Right"
@@ -20,8 +21,17 @@ class Participant(Enum):
 
 parser = argparse.ArgumentParser()
 parser.add_argument("participantName", help="Name of the solver.", type=str, choices=[p.value for p in Participant])
-parser.add_argument("-ts", "--time-stepping", help="Time stepping scheme being used.", type=str, choices=[s.value for s in TimeSteppingSchemes], default=TimeSteppingSchemes.NEWMARK_BETA.value)
-parser.add_argument("-is", "--interpolation-scheme", help=f"Interpolation scheme being used.", type=str, choices=[InterpolationSchemes.LAGRANGE.value, InterpolationSchemes.HERMITE.value], default=InterpolationSchemes.LAGRANGE.value)
+parser.add_argument("-ts", "--time-stepping", help="Time stepping scheme being used.", type=str,
+                    choices=[s.value for s in TimeSteppingSchemes], default=TimeSteppingSchemes.NEWMARK_BETA.value)
+parser.add_argument(
+    "-is",
+    "--interpolation-scheme",
+    help=f"Interpolation scheme being used.",
+    type=str,
+    choices=[
+        InterpolationSchemes.LAGRANGE.value,
+        InterpolationSchemes.HERMITE.value],
+    default=InterpolationSchemes.LAGRANGE.value)
 args = parser.parse_args()
 
 participant_name = args.participantName
@@ -71,7 +81,7 @@ vertex_id = participant.set_mesh_vertex(mesh_id, vertex)
 read_data_id = participant.get_data_id(read_data_name, mesh_id)
 write_data_id = participant.get_data_id(write_data_name, mesh_id)
 
-if(args.interpolation_scheme == InterpolationSchemes.HERMITE.value):
+if (args.interpolation_scheme == InterpolationSchemes.HERMITE.value):
     d_dt_read_data_id = participant.get_data_id(f"d_dt_{read_data_name}", mesh_id)
     d_dt_write_data_id = participant.get_data_id(f"d_dt_{write_data_name}", mesh_id)
 
@@ -82,7 +92,7 @@ dt = np.min([precice_dt, my_dt])
 if participant.is_action_required(precice.action_write_initial_data()):
     participant.write_scalar_data(write_data_id, vertex_id, u0)
 
-    if(args.interpolation_scheme == InterpolationSchemes.HERMITE.value):
+    if (args.interpolation_scheme == InterpolationSchemes.HERMITE.value):
         participant.write_scalar_data(d_dt_write_data_id, vertex_id, v0)
 
     participant.mark_action_fulfilled(precice.action_write_initial_data())
@@ -97,7 +107,7 @@ a = a0
 u_start = u_end = other_mass.u0
 t = 0
 
-if(args.interpolation_scheme == InterpolationSchemes.HERMITE.value):
+if (args.interpolation_scheme == InterpolationSchemes.HERMITE.value):
     d_dt_u_start = d_dt_u_end = other_mass.v0
 
 time_stepper: TimeStepper
@@ -111,7 +121,8 @@ elif args.time_stepping == TimeSteppingSchemes.RUNGE_KUTTA_4.value:
 elif args.time_stepping == TimeSteppingSchemes.Radau_IIA.value:
     time_stepper = RadauIIA(stiffness=stiffness, mass=mass)
 else:
-    raise Exception(f"Invalid time stepping scheme {args.time_stepping}. Please use one of {[ts.value for ts in TimeSteppingSchemes]}")
+    raise Exception(
+        f"Invalid time stepping scheme {args.time_stepping}. Please use one of {[ts.value for ts in TimeSteppingSchemes]}")
 
 
 positions = []
@@ -130,7 +141,7 @@ while participant.is_coupling_ongoing():
         t_cp = t
         u_start = u_end  # displacement at the beginning of the window
 
-        if(args.interpolation_scheme == InterpolationSchemes.HERMITE.value):
+        if (args.interpolation_scheme == InterpolationSchemes.HERMITE.value):
             d_dt_u_start = d_dt_u_end  # time derivative of displacement at the beginning of the window
 
         # store data for plotting and postprocessing
@@ -141,18 +152,21 @@ while participant.is_coupling_ongoing():
         participant.mark_action_fulfilled(precice.action_write_iteration_checkpoint())
 
     # implementation of waveform iteration in adapter
-    u_end = participant.read_scalar_data(read_data_id, vertex_id)  # preCICE v2 returns value at end of window by default
+    # preCICE v2 returns value at end of window by default
+    u_end = participant.read_scalar_data(read_data_id, vertex_id)
 
-    if(args.interpolation_scheme == InterpolationSchemes.HERMITE.value):
-        d_dt_u_end = participant.read_scalar_data(d_dt_read_data_id, vertex_id)  # preCICE v2 returns value at end of window by default
+    if (args.interpolation_scheme == InterpolationSchemes.HERMITE.value):
+        # preCICE v2 returns value at end of window by default
+        d_dt_u_end = participant.read_scalar_data(d_dt_read_data_id, vertex_id)
 
     t_start = t_cp  # time at beginning of the window
     t_end = t_start + dt  # time at end of the window
 
-    if(args.interpolation_scheme == InterpolationSchemes.LAGRANGE.value):
-        f = lambda dt: connecting_spring.k * do_linear_interpolation(t_start + dt, (t_start, u_start), (t_end, u_end))
-    elif(args.interpolation_scheme == InterpolationSchemes.HERMITE.value):
-        f = lambda dt: connecting_spring.k * do_cubic_interpolation(t_start + dt, (t_start, u_start, d_dt_u_start), (t_end, u_end, d_dt_u_end))
+    if (args.interpolation_scheme == InterpolationSchemes.LAGRANGE.value):
+        def f(dt): return connecting_spring.k * do_linear_interpolation(t_start + dt, (t_start, u_start), (t_end, u_end))
+    elif (args.interpolation_scheme == InterpolationSchemes.HERMITE.value):
+        def f(dt): return connecting_spring.k * do_cubic_interpolation(t_start + \
+              dt, (t_start, u_start, d_dt_u_start), (t_end, u_end, d_dt_u_end))
 
     # do time stepping
     u_new, v_new, a_new = time_stepper.do_step(u, v, a, f, dt)
@@ -160,7 +174,7 @@ while participant.is_coupling_ongoing():
 
     participant.write_scalar_data(write_data_id, vertex_id, u_new)
 
-    if(args.interpolation_scheme == InterpolationSchemes.HERMITE.value):
+    if (args.interpolation_scheme == InterpolationSchemes.HERMITE.value):
         participant.write_scalar_data(d_dt_write_data_id, vertex_id, v_new)
 
     precice_dt = participant.advance(dt)

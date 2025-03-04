@@ -162,7 +162,7 @@ class RadauIIA(TimeStepper):
         if isinstance(rhs, float):
             constant_value: float = rhs  # copy constant value of rhs into buffer
             def rhs(t): return constant_value  # overwrite rhs with lambda function
-        
+
         def f(t, x): return self.ode_system.dot(x) + np.array([np.zeros_like(t), rhs(t)])
 
         # use adaptive time stepping; dense_output=True allows us to sample from continuous function later

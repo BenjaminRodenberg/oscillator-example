@@ -10,11 +10,12 @@ from io import TextIOWrapper
 from numpy.typing import ArrayLike
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-tss",
-                    "--time-stepping-scheme",
-                    help=f"Time stepping scheme being used. Please use one of {[ts.value for ts in TimeSteppingSchemes]}",
-                    type=str,
-                    default=TimeSteppingSchemes.NEWMARK_BETA.value)
+parser.add_argument(
+    "-tss",
+    "--time-stepping-scheme",
+    help=f"Time stepping scheme being used. Please use one of {[ts.value for ts in TimeSteppingSchemes]}",
+    type=str,
+    default=TimeSteppingSchemes.NEWMARK_BETA.value)
 parser.add_argument("-dt", "--time-step-size", help=f"Time step size being used", type=float, default=0.04)
 args = parser.parse_args()
 

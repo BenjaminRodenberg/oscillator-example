@@ -49,7 +49,7 @@ if __name__ == "__main__":
         help="Base factor for time window size / time step size",
         type=int,
         nargs=n_supported_participants,
-        default=n_supported_participants*[1])
+        default=n_supported_participants * [1])
     parser.add_argument(
         "-s",
         "--time-step-refinements",
@@ -62,15 +62,16 @@ if __name__ == "__main__":
         help="Factor of time step refinements for each participant (use 1, if you want to use a fixed time step / time window relationship for one participant while refining the time steps for the other participant)",
         type=int,
         nargs=n_supported_participants,
-        default=n_supported_participants*[2])
-    ## add solver specific arguments below, if needed
+        default=n_supported_participants *
+        [2])
+    # add solver specific arguments below, if needed
     parser.add_argument(
         "-tss",
         "--time-stepping-scheme",
         help="Define time stepping scheme used by each solver",
         type=str,
         nargs=n_supported_participants,
-        default=n_supported_participants*["Newmark_beta"])
+        default=n_supported_participants * ["Newmark_beta"])
     parser.add_argument(
         "-o",
         "--out-filename",
@@ -88,10 +89,21 @@ if __name__ == "__main__":
     root_folder = Path(__file__).parent.absolute()
 
     # Define how participants will be executed here
-    participants: Participants = {
-        "Mass-Left": Participant("Mass-Left", root_folder, [".venv/bin/python3", "oscillator.py"], ["Mass-Left"], {'--time-stepping': args.time_stepping_scheme[0], '--n-substeps': None}),
-        "Mass-Right": Participant("Mass-Right", root_folder, [".venv/bin/python3", "oscillator.py"], ["Mass-Right"], {'--time-stepping': args.time_stepping_scheme[1], '--n-substeps': None}),        
-    }
+    participants: Participants = {"Mass-Left": Participant("Mass-Left",
+                                                           root_folder,
+                                                           [".venv/bin/python3",
+                                                            "oscillator.py"],
+                                                           ["Mass-Left"],
+                                                           {'--time-stepping': args.time_stepping_scheme[0],
+                                                               '--n-substeps': None}),
+                                  "Mass-Right": Participant("Mass-Right",
+                                                            root_folder,
+                                                            [".venv/bin/python3",
+                                                             "oscillator.py"],
+                                                            ["Mass-Right"],
+                                                            {'--time-stepping': args.time_stepping_scheme[1],
+                                                             '--n-substeps': None}),
+                                  }
 
     if len(participants) != n_supported_participants:
         raise Exception(f"Currently only supports coupling of {n_supported_participants} participants")
@@ -109,7 +121,8 @@ if __name__ == "__main__":
             precice_config_params['time_window_size'] = dt
             i = 0
             for p in participants.values():
-                p.kwargs['--n-substeps'] = args.base_time_step_refinement[i]*args.time_step_refinement_factor[i]**refinement
+                p.kwargs['--n-substeps'] = args.base_time_step_refinement[i] * \
+                    args.time_step_refinement_factor[i]**refinement
                 i += 1
 
             run(participants, args.template_path, precice_config_params)
