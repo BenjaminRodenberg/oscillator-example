@@ -77,4 +77,4 @@ if __name__ == "__main__":
         results.append(summary)
         results.output_preliminary()
         
-    results.output_final(participants, args, silent=args.silent, executor=args.executor))    
+    results.output_final(participants, args, silent=args.silent, executor=args.executor)
