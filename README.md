@@ -28,6 +28,8 @@ If you want to perform convergence studies, please install the package `prepesth
 
 It is generally recommended to use the appropriate version of the preCICE virtual machine[^3][^4] for run all experiments. See https://precice.org/installation-vm.html for details.
 
+You can also refer to the folder `.github/workflows` for CI jobs that run all experiments provided in this repository.
+
 [^1]: Rodenberg, Benjamin. *Flexible and robust time stepping for partitioned multiphysics*. Technical University of Munich, 2025. Unpublished manuscript. Available at: https://doi.org/**TODO**.
 [^2]: Schüller, Valentina; Rodenberg, Benjamin; Uekermann, Benjamin; Bungartz, Hans-Joachim. *A Simple Test Case for Convergence Order in Time and Energy Conservation of Black-Box Coupling Schemes*. WCCM-APCOM2022, 2022. Available at: https://www.scipedia.com/public/Rodenberg_2022a.
 [^3]: Chourdakis, Gerasimos; Davis, Kyle; Desai, Ishaan; Rodenberg, Benjamin; Schneider, David; Simonis, Frédéric; Uekermann, Benjamin; Ariguib, Boshra; Cardiff, Philip; Jaust, Alexander; Kharitenko, Pavel; Klöfkorn, Robert; Kotarsky, Niklas; Martin, Boris; Scheurer, Erik; Schüller, Valentina; van Zwieten, Gertjan; Yurt, Kursat. *preCICE Distribution Version v2211.0*. DaRUS, 2023, V1. https://doi.org/10.18419/darus-3576.
