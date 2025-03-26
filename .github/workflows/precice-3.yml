@@ -9,61 +9,45 @@ jobs:
         # Higher-order time stepping
         - name: Higher-order time stepping Newmark_beta
           args: '-tss Newmark_beta Newmark_beta -o convergence-studies/higher-order/precice_3_Newmark_beta.csv'
-          container-tag: 3.1.2
         - name: Higher-order time stepping generalized_alpha
           args: '-tss generalized_alpha generalized_alpha -o convergence-studies/higher-order/precice_3_generalized_alpha.csv'
-          container-tag: 3.1.2
         - name: Higher-order time stepping runge_kutta_4
           args: '-tss runge_kutta_4 runge_kutta_4 -o convergence-studies/higher-order/precice_3_runge_kutta_4.csv'
-          container-tag: 3.1.2
         - name: Higher-order time stepping radauIIA
           args: '-tss radauIIA radauIIA -o convergence-studies/higher-order/precice_3_radauIIA.csv'
-          container-tag: 3.1.2
         # Subcycling
         - name: Subcycling Newmark_beta
           args: '-s 5 -sb 1 1 -sf 2 1 -w 1 -tss Newmark_beta Newmark_beta -o convergence-studies/subcycling/precice_3_Newmark_beta.csv'
-          container-tag: 3.1.2
         - name: Subcycling generalized_alpha
           args: '-s 5 -sb 1 1 -sf 2 1 -w 1 -tss generalized_alpha generalized_alpha -o convergence-studies/subcycling/precice_3_generalized_alpha.csv'
-          container-tag: 3.1.2
         - name: Subcycling runge_kutta_4
           args: '-s 5 -sb 1 1 -sf 2 1 -w 1 -tss runge_kutta_4 runge_kutta_4 -o convergence-studies/subcycling/precice_3_runge_kutta_4.csv'
-          container-tag: 3.1.2
         - name: Subcycling radauIIA
           args: '-s 5 -sb 1 1 -sf 2 1 -w 1 -tss radauIIA radauIIA -o convergence-studies/subcycling/precice_3_radauIIA.csv'
-          container-tag: 3.1.2
         # Runge Kutta 4
         - name: runge_kutta_4 degree 1
           args: '-tss runge_kutta_4 runge_kutta_4 -wd 1 -dt 0.2 -sb 5 5 -o convergence-studies/runge-kutta-4/precice_3_runge_kutta_4_degree1.csv'
-          container-tag: 3.1.2
         - name: runge_kutta_4 degree 2
           args: '-tss runge_kutta_4 runge_kutta_4 -wd 2 -dt 0.2 -sb 5 5 -o convergence-studies/runge-kutta-4/precice_3_runge_kutta_4_degree2.csv'
-          container-tag: 3.1.2
         - name: runge_kutta_4 degree 3
           args: '-tss runge_kutta_4 runge_kutta_4 -wd 3 -dt 0.2 -sb 5 5 -o convergence-studies/runge-kutta-4/precice_3_runge_kutta_4_degree3.csv'
-          container-tag: 3.1.2
         # RadauIIA
         - name: radauIIA degree 1
           args: '-tss radauIIA radauIIA -wd 1 -dt 0.2 -sb 5 5 -o convergence-studies/radauIIA/precice_3_radauIIA_degree1.csv'
-          container-tag: 3.1.2
         - name: radauIIA degree 2
           args: '-tss radauIIA radauIIA -wd 2 -dt 0.2 -sb 5 5 -o convergence-studies/radauIIA/precice_3_radauIIA_degree2.csv'
-          container-tag: 3.1.2
         - name: radauIIA degree 3
           args: '-tss radauIIA radauIIA -wd 3 -dt 0.2 -sb 5 5 -o convergence-studies/radauIIA/precice_3_radauIIA_degree3.csv'
-          container-tag: 3.1.2
         # degree > 3 only allowed for precice > 3.2; see run_experiments_v3_nightly below
         - name: radauIIA degree 4
           args: '-tss radauIIA radauIIA -wd 4 -dt 0.2 -sb 5 5 -o convergence-studies/radauIIA/precice_3_radauIIA_degree4.csv'
-          container-tag: nightly
         - name: radauIIA degree 5
           args: '-tss radauIIA radauIIA -wd 5 -dt 0.2 -sb 5 5 -o convergence-studies/radauIIA/precice_3_radauIIA_degree5.csv'
-          container-tag: nightly
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: ./precice-3
-    container: precice/precice:${{ matrix.experiment.container-tag }}
+    container: precice/precice:3.2.0rc1
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
