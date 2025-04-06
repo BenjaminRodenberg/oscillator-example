@@ -38,7 +38,6 @@ jobs:
           args: '-tss radauIIA radauIIA -wd 2 -dt 0.2 -sb 5 5 -o convergence-studies/radauIIA/precice_3_radauIIA_degree2.csv'
         - name: radauIIA degree 3
           args: '-tss radauIIA radauIIA -wd 3 -dt 0.2 -sb 5 5 -o convergence-studies/radauIIA/precice_3_radauIIA_degree3.csv'
-        # degree > 3 only allowed for precice > 3.2; see run_experiments_v3_nightly below
         - name: radauIIA degree 4
           args: '-tss radauIIA radauIIA -wd 4 -dt 0.2 -sb 5 5 -o convergence-studies/radauIIA/precice_3_radauIIA_degree4.csv'
         - name: radauIIA degree 5
@@ -47,7 +46,7 @@ jobs:
     defaults:
       run:
         working-directory: ./precice-3
-    container: precice/precice:3.2.0rc1
+    container: precice/precice:3.2.0
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
