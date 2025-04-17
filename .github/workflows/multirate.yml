@@ -13,7 +13,7 @@ jobs:
         - name: degree3
           args: '-tss radauIIA radauIIA -is BSpline -wd 3 -sb 4 4 -o convergence-studies/bspline/multirate_radauIIA_degree3.csv'
         - name: degree4
-          args: '-tss radauIIA radauIIA -is BSpline -wd 4 -sb 16 16 -o convergence-studies/bspline/multirate_radauIIA_degree4.csv'
+          args: '-tss radauIIA radauIIA -is BSpline -wd 4 -sb 8 8 -o convergence-studies/bspline/multirate_radauIIA_degree4.csv'
     runs-on: ubuntu-latest
     defaults:
       run:
